@@ -1,0 +1,32 @@
+{
+  "affine_coupling_layers":
+  {
+    "z_dim": 2,
+    "c_dim": 2,
+    "n_transformation": 6,
+    "s_net": {
+      "n_hidden": 2,
+      "hidden_dim": 256,
+      "activation_type": "leaky_relu",
+      "last_activation_type": "tanh"
+    },
+    "t_net": {
+      "n_hidden": 2,
+      "hidden_dim": 256,
+      "activation": "leaky_relu",
+      "last_activation": "none"
+    },
+    "optimizer": {
+      "type": "Adam",
+      "kwargs": {
+        "learning_rate": 0.001
+      }
+    },
+    "train": "True"
+  },
+  "physics":
+  {
+    "type": "arz",
+    "train": "False"
+  }
+}
