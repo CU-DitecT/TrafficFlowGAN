@@ -1,6 +1,5 @@
 import numpy as np
 from scipy.stats import multivariate_normal
-import tensorflow as tf
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from src.metrics_factory.get_KL import get_KL
 from src.metrics_factory.get_NLPD import get_NLPD, get_NLPD_old
@@ -8,8 +7,8 @@ from src.metrics_factory.get_NLPD import get_NLPD, get_NLPD_old
 
 def instantiate_losses(loss_name):
     loss_dict = {
-        "mse":tf.keras.losses.MeanSquaredError(name="mean_squared_error"),
-        "kl":tf.keras.losses.BinaryCrossentropy(from_logits=True, name="binary_crossentropy")
+        "mse":tf.keras.losses.MeanSquaredError(name="mean_squared_error"), # should change to torch loss
+        "kl":tf.keras.losses.BinaryCrossentropy(from_logits=True, name="binary_crossentropy") # should change to torch loss
     }
 
 
@@ -17,9 +16,9 @@ def instantiate_losses(loss_name):
 
 def instantiate_metrics(metric_name):
     metric_dict = {
-        "mse": tf.keras.metrics.MeanSquaredError(),
-        "rmse": tf.keras.metrics.RootMeanSquaredError(),
-        "mae": tf.keras.metrics.MeanAbsoluteError(),
+        "mse": tf.keras.metrics.MeanSquaredError(), # should change to torch loss
+        "rmse": tf.keras.metrics.RootMeanSquaredError(), # should change to torch loss
+        "mae": tf.keras.metrics.MeanAbsoluteError(), # should change to torch loss
     }
 
     return metric_dict[metric_name]

@@ -13,8 +13,8 @@
     "t_net": {
       "n_hidden": 2,
       "hidden_dim": 256,
-      "activation": "leaky_relu",
-      "last_activation": "none"
+      "activation_type": "leaky_relu",
+      "last_activation_type": "none"
     },
     "optimizer": {
       "type": "Adam",
@@ -28,5 +28,7 @@
   {
     "type": "arz",
     "train": "False"
-  }
+  },
+  "batch_size":5000,
+  "epochs": 5000
 }

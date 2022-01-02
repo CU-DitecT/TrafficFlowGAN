@@ -22,6 +22,7 @@ class RealNVP(nn.Module):
         s = [get_fully_connected_layer(*s_args, **s_kwargs) for _ in range(mask.shape[0])]
         self.t = torch.nn.ModuleList(t)
         self.s = torch.nn.ModuleList(s)
+        self.prior = torch.distributions.MultivariateNormal(torch.zeros(z_dim), torch.eye(z_dim))
 
     def g(self, z, c):
         # transform from z to x
