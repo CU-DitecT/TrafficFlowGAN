@@ -17,7 +17,8 @@ class RealNVP(nn.Module):
     def __init__(self, z_dim, n_transformation, s_args, t_args,  s_kwargs, t_kwargs):
         super(RealNVP, self).__init__()
         mask = get_mask(z_dim, n_transformation)
-        self.mask = nn.Parameter(mask, requires_grad=False)
+        mask_torch=torch.from_numpy(mask)
+        self.mask = nn.Parameter(mask_torch, requires_grad=False)        
         t = [get_fully_connected_layer(*t_args, **t_kwargs) for _ in range(mask.shape[0])]
         s = [get_fully_connected_layer(*s_args, **s_kwargs) for _ in range(mask.shape[0])]
         self.t = torch.nn.ModuleList(t)
@@ -38,21 +39,23 @@ class RealNVP(nn.Module):
 
     def f(self, x, c):
         # transform from x to z
-        z = x
-        log_det_J = x.new_zeros(x.shape[0])
+
+        z = torch.from_numpy(x) #z = x
+        c_ = torch.from_numpy(c)
+        log_det_J = z.new_zeros(x.shape[0]) #log_det_J = x.new_zeros(x.shape[0])
         for i in reversed(range(len(self.t))):
-            z_ = self.mask[i] * z
+            z_ = (self.mask[i] * z).float() #z_ = (self.mask[i] * z)            
             s = (1 - self.mask[i]) * self.s[i](
-                torch.cat((z_, c), 1))
+                torch.cat((z_, c_), 1))            
             t = (1 - self.mask[i]) * self.t[i](
-                torch.cat((z_, c), 1))
+                torch.cat((z_, c_), 1))
             z = (1 - self.mask[i]) * (z - t) * torch.exp(-s) + z_
             log_det_J -= s.sum(dim=1)
         return z, log_det_J
 
     def log_prob(self, x, c):
         z, log_p = self.f(x, c)
-        return self.prior.log_prob(z) + log_p
+        return self.prior.log_prob(z.float()) + log_p
 
     def test(self, c):
         z = self.prior.sample((c.shape[0], 1))

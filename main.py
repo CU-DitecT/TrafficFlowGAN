@@ -20,6 +20,7 @@ parser.add_argument('--restore_from', default=None,
                     help="Optional, file location containing weights to reload")
 parser.add_argument('--mode', default='train',
                     help="train, test, or train_and_test")
+parser.add_argument('--n_hidden', default=3)
 
 parser.add_argument('--force_overwrite', default=False, action='store_true',
                     help="For debug. Force to overwrite")
@@ -69,10 +70,13 @@ if __name__ == "__main__":
 
     # create model
     input_dim = params.affine_coupling_layers["z_dim"] + params.affine_coupling_layers["c_dim"]
+    
     output_dim = params.affine_coupling_layers["z_dim"]
-    s_args = (input_dim, output_dim,
+    s_args = (input_dim, output_dim, 
               params.affine_coupling_layers["s_net"]["n_hidden"],
               params.affine_coupling_layers["s_net"]["hidden_dim"])
+
+  
 
     t_args = (input_dim, output_dim,
               params.affine_coupling_layers["t_net"]["n_hidden"],
@@ -83,7 +87,6 @@ if __name__ == "__main__":
 
     t_kwargs = {"activation_type": params.affine_coupling_layers["t_net"]["activation_type"],
                 "last_activation_type": params.affine_coupling_layers["t_net"]["last_activation_type"]}
-
     model = RealNVP(params.affine_coupling_layers["z_dim"],
                     params.affine_coupling_layers["n_transformation"],
                     s_args,
@@ -122,8 +125,8 @@ if __name__ == "__main__":
     #
     # restore_from: the directory for the model file.
     if args.mode == "train" or args.mode == "train_and_test":
-        logging.info("Starting training for {} epoch(s)".format(params.epoch))
+        logging.info("Starting training for {} epoch(s)".format(params.epochs))
         training(model, optimizer, train_feature, train_label,
-                 restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epoch,
+                 restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
                  experiment_dir=args.experiment_dir
                  )

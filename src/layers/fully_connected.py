@@ -10,7 +10,7 @@ def instantiate_activation_function(function_name):
     return function_dict[function_name]
 
 
-def get_fully_connected_layer(self, input_dim, output_dim, n_hidden, hidden_dim,
+def get_fully_connected_layer(input_dim, output_dim, n_hidden, hidden_dim,
                               activation_type="leaky_relu",
                               last_activation_type="tanh"):
     modules = [nn.Linear(input_dim, hidden_dim)]
@@ -30,7 +30,9 @@ def get_fully_connected_layer(self, input_dim, output_dim, n_hidden, hidden_dim,
 
     modules.append(nn.Linear(hidden_dim, output_dim))
     last_activation = instantiate_activation_function(last_activation_type)
-    if last_activation_type is not None:
+    if last_activation_type =='none':
+        pass
+    else:
         modules.append(last_activation)
 
     return nn.Sequential(*modules)

@@ -19,7 +19,7 @@
     "optimizer": {
       "type": "Adam",
       "kwargs": {
-        "learning_rate": 0.001
+        "lr": 0.001
       }
     },
     "train": "True"
