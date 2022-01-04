@@ -33,25 +33,23 @@ if __name__ == "__main__":
     assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
     params = Params(json_path)
 
-    # Load the parameters from the dataset, that gives the size etc. into params
-    #json_path = os.path.join(args.data_dir, 'data_para.json')
-    #assert os.path.isfile(json_path), "No json file found at {}, run build_arz_data.py".format(json_path)
-    #params.update(json_path)
-
-    # Check if force to overwrite
+    # Safe Overwrite. Avoid to overwrite the previous experiment by mistake.
     force_overwrite = args.force_overwrite
     if force_overwrite is True:
+        safe_files = ["experiment_setting.json"]
+        if args.restore_from is not None:
+            safe_files.append(os.path.split(args.restore_from)[-1])
+
+        if args.mode == "test":
+            # every file under the root of the "experiment_dir"
+            for file_folder in os.listdir(args.experiment_dir):
+                if os.path.isfile(file_folder):
+                    safe_files.append(file_folder)
+
+        # delete everything that is not in "safe_files"
         for file_folder in os.listdir(args.experiment_dir):
-            if file_folder != 'experiment_setting.json':
+            if file_folder not in safe_files:
                 delete_file_or_folder(os.path.join(args.experiment_dir, file_folder))
-
-    # Check that we are not overwriting some previous experiment
-    # Comment these lines if you are developing your model and don't care about overwritting
-    model_dir_has_best_weights = os.path.isdir(os.path.join(args.experiment_dir, "best_weights"))
-    overwritting = model_dir_has_best_weights and args.restore_from is None
-
-    if args.mode != "test":
-        assert not overwritting, "Weights found in model_dir, aborting to avoid overwrite"
 
     # Set the logger
     set_logger(os.path.join(args.experiment_dir, 'train.log'))
@@ -76,24 +74,29 @@ if __name__ == "__main__":
               params.affine_coupling_layers["s_net"]["n_hidden"],
               params.affine_coupling_layers["s_net"]["hidden_dim"])
 
-  
-
     t_args = (input_dim, output_dim,
               params.affine_coupling_layers["t_net"]["n_hidden"],
               params.affine_coupling_layers["t_net"]["hidden_dim"])
 
     s_kwargs = {"activation_type": params.affine_coupling_layers["s_net"]["activation_type"],
-                "last_activation_type": params.affine_coupling_layers["s_net"]["last_activation_type"]}
+                "last_activation_type": params.affine_coupling_layers["s_net"]["last_activation_type"],
+                "last_activation_scale": params.affine_coupling_layers["s_net"]["last_activation_scale"]}
 
     t_kwargs = {"activation_type": params.affine_coupling_layers["t_net"]["activation_type"],
-                "last_activation_type": params.affine_coupling_layers["t_net"]["last_activation_type"]}
+                "last_activation_type": params.affine_coupling_layers["t_net"]["last_activation_type"],
+                "last_activation_scale": params.affine_coupling_layers["t_net"]["last_activation_scale"]}
+
     model = RealNVP(params.affine_coupling_layers["z_dim"],
                     params.affine_coupling_layers["n_transformation"],
                     s_args,
                     t_args,
                     s_kwargs,
                     t_kwargs)
-
+    if torch.cuda.is_available():
+        model = model.cuda()
+        logging.info("Enable cuda")
+    else:
+        logging.info("cuda is not available")
     logging.info("- done.")
 
     # create optimizer
@@ -128,5 +131,7 @@ if __name__ == "__main__":
         logging.info("Starting training for {} epoch(s)".format(params.epochs))
         training(model, optimizer, train_feature, train_label,
                  restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
-                 experiment_dir=args.experiment_dir
+                 experiment_dir=args.experiment_dir,
+                 save_frequency=params.save_frequency,
+                 verbose_frequency=params.verbose_frequency
                  )

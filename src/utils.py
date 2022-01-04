@@ -87,14 +87,25 @@ def save_dict_to_json(d, json_path):
             d = {k: float(v) for k, v in d.items()}
         json.dump(d, f, indent=4)
 
+
 def load_json(json_path):
     with open(json_path) as f:
         params = json.load(f)
     return params
 
+
+def check_and_make_dir(path):
+    if not os.path.isdir(path):
+        try:
+            os.makedirs(path)
+        except OSError:
+            print("Creation of the directory " + str(path) + " failed")
+
+
 def check_exist_and_delete(file_path):
     if os.path.exists(file_path):
         os.remove(file_path)
+
 
 def check_exist_and_create(dir_path):
     if not os.path.exists(dir_path):
@@ -126,11 +137,6 @@ def save_checkpoint(state, is_best, checkpoint):
         checkpoint: (string) folder where parameters are to be saved
     """
     filepath = os.path.join(checkpoint, 'last.pth.tar')
-    if not os.path.exists(checkpoint):
-        print("Checkpoint Directory does not exist! Making directory {}".format(checkpoint))
-        os.mkdir(checkpoint)
-    else:
-        print("Checkpoint Directory exists! ")
     torch.save(state, filepath)
     if is_best:
         shutil.copyfile(filepath, os.path.join(checkpoint, 'best.pth.tar'))
@@ -150,9 +156,9 @@ def load_checkpoint(checkpoint, model, optimizer=None, epoch=None):
     checkpoint = torch.load(checkpoint)
     model.load_state_dict(checkpoint['state_dict'])
 
-    if optimizer:
+    if optimizer is not None:
         optimizer.load_state_dict(checkpoint['optim_dict'])
-    if epoch:
+    if epoch is not None:
         epoch = checkpoint['epoch']
         return epoch
     return checkpoint
