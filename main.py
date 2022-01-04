@@ -79,12 +79,10 @@ if __name__ == "__main__":
               params.affine_coupling_layers["t_net"]["hidden_dim"])
 
     s_kwargs = {"activation_type": params.affine_coupling_layers["s_net"]["activation_type"],
-                "last_activation_type": params.affine_coupling_layers["s_net"]["last_activation_type"],
-                "last_activation_scale": params.affine_coupling_layers["s_net"]["last_activation_scale"]}
+                "last_activation_type": params.affine_coupling_layers["s_net"]["last_activation_type"]}
 
     t_kwargs = {"activation_type": params.affine_coupling_layers["t_net"]["activation_type"],
-                "last_activation_type": params.affine_coupling_layers["t_net"]["last_activation_type"],
-                "last_activation_scale": params.affine_coupling_layers["t_net"]["last_activation_scale"]}
+                "last_activation_type": params.affine_coupling_layers["t_net"]["last_activation_type"]}
 
     model = RealNVP(params.affine_coupling_layers["z_dim"],
                     params.affine_coupling_layers["n_transformation"],

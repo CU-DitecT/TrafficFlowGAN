@@ -56,6 +56,7 @@ class RealNVP(nn.Module):
             z_ = (self.mask[i] * z).float()  # z_ = (self.mask[i] * z)
             s = (1 - self.mask[i]) * self.s[i](
                 torch.cat((z_, c_), 1))
+            s = torch.clamp(s, min=-5, max=5)
             t = (1 - self.mask[i]) * self.t[i](
                 torch.cat((z_, c_), 1))
             z = (1 - self.mask[i]) * (z - t) * torch.exp(-s) + z_
