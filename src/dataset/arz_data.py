@@ -13,7 +13,7 @@ class arz_data_loader():
         self.N_loop = Loop_number
 
     def load_data(self):
-        data = scipy.io.loadmat('../../data/arz/ARZ_greenshieldSim_epsbell_infer_ring_May14_0.02tau.mat')
+        data = scipy.io.loadmat('data/arz/ARZ_greenshieldSim_epsbell_infer_ring_May14_0.02tau.mat')
 
 
         t = data['t'].flatten()[:,None]# 960 by 1

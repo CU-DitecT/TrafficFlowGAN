@@ -32,5 +32,12 @@
   "batch_size":5000,
   "epochs": 5000,
   "save_frequency": 1,
-  "verbose_frequency": 1
+  "verbose_frequency": 1,
+  "data_arz":
+  {
+    "loop_number":6,
+    "noise_scale":0.02,
+    "noise_number":20
+  }
+
 }

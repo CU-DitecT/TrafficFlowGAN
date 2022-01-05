@@ -1,4 +1,4 @@
-name: physics-flow
+name: PhysicsFlow
 dependencies:
   - python=3.7
   - pip
@@ -7,3 +7,4 @@ dependencies:
     - numpy
     - tensorboard
     - setuptools==59.5
+    - scipy

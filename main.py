@@ -11,6 +11,7 @@ from src.models.flow import RealNVP
 # from src.metrics import instantiate_losses, instantiate_metrics, functionalize_metrics
 from src.utils import set_logger, delete_file_or_folder
 from src.training import training
+from src.dataset.arz_data import arz_data_loader
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--experiment_dir', default='experiments/arz',
@@ -57,9 +58,8 @@ if __name__ == "__main__":
 
     # Create the input data pipeline
     logging.info("Loading the datasets...")
-    train_feature = np.loadtxt(os.path.join(args.data_dir, 'train_feature.csv'), delimiter=",", dtype=np.float32)
-    train_label = np.loadtxt(os.path.join(args.data_dir, 'train_label.csv'), delimiter=",", dtype=np.float32)
-
+    arz_data = arz_data_loader(params.data_arz['loop_number'],params.data_arz['noise_scale'],params.data_arz['noise_number'])
+    train_feature, train_label = arz_data.load_data()
     logging.info("train feature shape: " + f"{train_feature.shape}")
     logging.info("train label shape: " + f"{train_label.shape}")
     logging.info("- done.")
