@@ -1,7 +1,6 @@
 # generatre arz data:
 import scipy.io
 import numpy as np
-from torch.utils.data import DataLoader
 # Noise level (in this noise free case is zero)
 
 class arz_data_loader():
@@ -92,3 +91,5 @@ class arz_data_loader():
         X_rho_repeat = X_rho_repeat.astype(np.float32)
         rho_u_repeat = rho_u_repeat.astype(np.float32)
         X_rho_u  = np.concatenate((rho_u_repeat, X_rho_repeat),axis=1)
+
+        return X_rho_repeat, rho_u_repeat
