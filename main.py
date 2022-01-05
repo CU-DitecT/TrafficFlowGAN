@@ -13,6 +13,15 @@ from src.utils import set_logger, delete_file_or_folder
 from src.training import training
 from src.dataset.arz_data import arz_data_loader
 
+# CUDA support 
+if torch.cuda.is_available():
+    device = torch.device('cuda:0')
+    torch.set_default_tensor_type('torch.cuda.FloatTensor')
+    logging.info("Enable cuda")
+else:
+    device = torch.device('cpu')
+    logging.info("cuda is not available")
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--experiment_dir', default='experiments/arz',
                     help="Directory containing experiment_setting.json")
@@ -86,17 +95,11 @@ if __name__ == "__main__":
 
     model = RealNVP(params.affine_coupling_layers["z_dim"],
                     params.affine_coupling_layers["n_transformation"],
+                    device,
                     s_args,
                     t_args,
                     s_kwargs,
-                    t_kwargs)
-    if torch.cuda.is_available():
-        model = model.cuda()
-        logging.info("Enable cuda")
-    else:
-        logging.info("cuda is not available")
-    logging.info("- done.")
-
+                    t_kwargs).to(device)
     # create optimizer
     if params.affine_coupling_layers["optimizer"]["type"] == "Adam":
         optimizer = torch.optim.Adam([p for p in model.parameters() if p.requires_grad == True]
