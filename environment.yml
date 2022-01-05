@@ -1,0 +1,7 @@
+name: physics-flow
+dependencies:
+  - python=3.7
+  - torch
+  - numpy
+  - tensorboard
+  - setuptools=59.5
