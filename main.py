@@ -99,7 +99,8 @@ if __name__ == "__main__":
                     s_args,
                     t_args,
                     s_kwargs,
-                    t_kwargs).to(device)
+                    t_kwargs)
+    model.to(device)
     # create optimizer
     if params.affine_coupling_layers["optimizer"]["type"] == "Adam":
         optimizer = torch.optim.Adam([p for p in model.parameters() if p.requires_grad == True]
