@@ -11,6 +11,16 @@ from src.models.flow import RealNVP
 # from src.metrics import instantiate_losses, instantiate_metrics, functionalize_metrics
 from src.utils import set_logger, delete_file_or_folder
 from src.training import training
+from src.dataset.arz_data import arz_data_loader
+
+# CUDA support 
+if torch.cuda.is_available():
+    device = torch.device('cuda:0')
+    torch.set_default_tensor_type('torch.cuda.FloatTensor')
+    logging.info("Enable cuda")
+else:
+    device = torch.device('cpu')
+    logging.info("cuda is not available")
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--experiment_dir', default='experiments/arz',
@@ -57,9 +67,8 @@ if __name__ == "__main__":
 
     # Create the input data pipeline
     logging.info("Loading the datasets...")
-    train_feature = np.loadtxt(os.path.join(args.data_dir, 'train_feature.csv'), delimiter=",", dtype=np.float32)
-    train_label = np.loadtxt(os.path.join(args.data_dir, 'train_label.csv'), delimiter=",", dtype=np.float32)
-
+    arz_data = arz_data_loader(params.data_arz['loop_number'],params.data_arz['noise_scale'],params.data_arz['noise_number'])
+    train_feature, train_label = arz_data.load_data()
     logging.info("train feature shape: " + f"{train_feature.shape}")
     logging.info("train label shape: " + f"{train_label.shape}")
     logging.info("- done.")
@@ -86,17 +95,12 @@ if __name__ == "__main__":
 
     model = RealNVP(params.affine_coupling_layers["z_dim"],
                     params.affine_coupling_layers["n_transformation"],
+                    device,
                     s_args,
                     t_args,
                     s_kwargs,
                     t_kwargs)
-    if torch.cuda.is_available():
-        model = model.cuda()
-        logging.info("Enable cuda")
-    else:
-        logging.info("cuda is not available")
-    logging.info("- done.")
-
+    model.to(device)
     # create optimizer
     if params.affine_coupling_layers["optimizer"]["type"] == "Adam":
         optimizer = torch.optim.Adam([p for p in model.parameters() if p.requires_grad == True]

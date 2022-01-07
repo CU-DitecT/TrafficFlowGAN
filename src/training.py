@@ -92,6 +92,56 @@ def training(model, optimizer, train_feature, train_target, restore_from=None,
                 writer.add_histogram(f"activation/{k:s}", v, epoch+1)
 
 
+def test(model, data_test,
+                restore_from=None,
+                metric_functions = None,
+                n_samples = None,
+                params=None,
+         train_PUNN = True):
+    # experiment_dir: where the model json file locates
+    # Initialize tf.Saver instances to save weights during metrics_factory
+
+    if restore_from is not None:
+        if ("phys" in model.name) and (train_PUNN is False):
+            meta_params = load_json(restore_from)
+            layer_specs, hyper_params = model.layer_specs, model.hyper_params
+            layer_specs["primal_physics"]["net_config"] = list(layer_specs["primal_physics"]["net_config"])
+            layer_specs["primal_physics"]["net_config"][0] = meta_params
+            layer_specs["primal_physics"]["net_config"] = tuple(layer_specs["primal_physics"]["net_config"])
+            parent_class = model.__class__
+            model =parent_class(layer_specs, hyper_params, name=model.name)
+        else:
+            model.load_weights(restore_from).expect_partial()
+    else:
+        raise FileExistsError("model not exist in "+ restore_from)
+
+    # make prediction
+    pre_train = not train_PUNN
+    test_feature, test_target = data_test
+    test_prediction = model.predict(test_feature, n_repeat=n_samples, pre_train=pre_train)
+
+    # convert to numpy
+    test_target = test_target.numpy()
+    test_prediction = test_prediction.numpy()
+
+    metrics_dict = dict()
+    kl = None
+    for k, func in metric_functions.items():
+        if k == 'nlpd':
+            use_mean = True if params.nlpd_use_mean == "True" else False
+            metrics_dict[k] = [func(test_target, test_prediction,
+                                   use_mean = use_mean,
+                                   n_bands = params.nlpd_n_bands)]
+        elif k == "kl":
+            kl = func(test_target, test_prediction)
+            metrics_dict[k] = [np.mean(kl)]
+        else:
+            metrics_dict[k] = [func(test_target, test_prediction)]
+
+
+    return metrics_dict, test_prediction, kl
+
+
 
 
 

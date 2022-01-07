@@ -1,6 +1,7 @@
 from torch import nn
 import torch
 import numpy as np
+from torch._C import device
 from src.layers.fully_connected import get_fully_connected_layer
 
 
@@ -14,7 +15,7 @@ def get_mask(z_dim, n_transformation):
 
 
 class RealNVP(nn.Module):
-    def __init__(self, z_dim, n_transformation, s_args, t_args, s_kwargs, t_kwargs):
+    def __init__(self, z_dim, n_transformation, device, s_args, t_args, s_kwargs, t_kwargs):
         super(RealNVP, self).__init__()
         mask = get_mask(z_dim, n_transformation)
         mask_torch = torch.from_numpy(mask)
@@ -25,7 +26,7 @@ class RealNVP(nn.Module):
         # hardcode: force the first s-net to have a tanh activation function
         #s_kwargs["last_activation_type"] = "tanh"
         #s[0] = get_fully_connected_layer(*s_args, **s_kwargs)
-
+        self.device = device
         self.t = torch.nn.ModuleList(t)
         self.s = torch.nn.ModuleList(s)
         self.prior = torch.distributions.MultivariateNormal(torch.zeros(z_dim), torch.eye(z_dim))
@@ -48,12 +49,12 @@ class RealNVP(nn.Module):
                       "x2": x[:, 1],
                       "c_1": c[:,0],
                       "c_2": c[:,1]}
-        z = torch.from_numpy(x)  # z = x
-        c_ = torch.from_numpy(c)
+        z = torch.from_numpy(x).to(self.device) # z = x
+        c_ = torch.from_numpy(c).to(self.device)
         log_det_J = z.new_zeros(x.shape[0])  # log_det_J = x.new_zeros(x.shape[0])
         for i in reversed(range(len(self.t))):
-            st_id = np.where(self.mask[i].numpy()==0)[0][0] # because mask=1 means keep the same value; mask=0 means using affine_coupling_layer
-            z_ = (self.mask[i] * z).float()  # z_ = (self.mask[i] * z)
+            st_id = np.where(self.mask[i].cpu().numpy()==0)[0][0] # because mask=1 means keep the same value; mask=0 means using affine_coupling_layer
+            z_ = (self.mask[i]* z).float()  # z_ = (self.mask[i] * z)
             s = (1 - self.mask[i]) * self.s[i](
                 torch.cat((z_, c_), 1))
             #s = torch.clamp(s, min=-5, max=5)
@@ -74,7 +75,7 @@ class RealNVP(nn.Module):
 
     def log_prob(self, x, c):
         z, log_p, activation = self.f(x, c)
-        return self.prior.log_prob(z.float()) + log_p, activation
+        return self.prior.log_prob(z.float())  + log_p , activation
 
     def test(self, c):
         z = self.prior.sample((c.shape[0], 1))
