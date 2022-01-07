@@ -29,8 +29,9 @@
     "type": "arz",
     "train": "False"
   },
-  "batch_size":5000,
+  "batch_size":115200,
   "epochs": 5000,
   "save_frequency": 1,
-  "verbose_frequency": 1
+  "verbose_frequency": 1,
+  "save_each_epoch": "True"
 }
