@@ -145,7 +145,38 @@ def test(model, data_test,
 
 
 
+def test_multiple_rounds(model, data_test, test_rounds,
+                         save_dir = None,
+                         model_alias = None,
+                        train_PUNN = True,
+                **kwargs):
+    metrics_dict, test_prediction, kl = test(model, data_test, train_PUNN=train_PUNN,
+                                         **kwargs)
+    logging.info("Restoring parameters from {}".format(kwargs["restore_from"]))
+    if test_rounds > 1:
+        for i in range(test_rounds-1):
+            metrics_dict_new,_,_ = test(model, data_test, train_PUNN = train_PUNN,
+                                    **kwargs)
+            for k in metrics_dict.keys():
+                metrics_dict[k] += metrics_dict_new[k]
+    check_and_make_dir(os.path.join(save_dir, model_alias))
+    save_path_metric = os.path.join(save_dir, model_alias,
+                                    f"metrics_test.json")
+    save_path_prediction = os.path.join(save_dir, model_alias,
+                                        f"predictions_test.csv")
+    save_path_feature = os.path.join(save_dir, model_alias,
+                                        f"features_test.csv")
+    save_path_target = os.path.join(save_dir, model_alias,
+                                        f"targets_test.csv")
+    save_path_kl = os.path.join(save_dir, model_alias,
+                                    f"kl_test.csv")
 
+
+    save_dict_to_json(metrics_dict, save_path_metric)
+    np.savetxt(save_path_prediction, test_prediction, delimiter=",")
+    np.savetxt(save_path_feature, data_test[0], delimiter=",")
+    np.savetxt(save_path_target, data_test[1], delimiter=",")
+    np.savetxt(save_path_kl, kl, delimiter=",")
 
 
 
