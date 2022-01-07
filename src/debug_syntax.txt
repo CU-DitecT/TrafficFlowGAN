@@ -1,0 +1,2 @@
+check the s and t in the flow.f:
+print("i=",i, f"s_min= {min(s.detach().numpy().flatten()):.3f}", f"s_max= {max(s.detach().numpy().flatten()):.3f}", f"t_min= {min(t.detach().numpy().flatten()):.3f}", f"t_max= {max(t.detach().numpy().flatten()):.3f}")

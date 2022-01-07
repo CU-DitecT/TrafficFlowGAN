@@ -128,7 +128,7 @@ def check_not_empty_and_delete(folder_path):
             os.remove(file_path)
 
 
-def save_checkpoint(state, is_best, checkpoint):
+def save_checkpoint(state, is_best, checkpoint, save_each_epoch):
     """Saves model and training parameters at checkpoint + 'last.pth.tar'. If is_best==True, also saves
     checkpoint + 'best.pth.tar'
     Args:
@@ -140,6 +140,8 @@ def save_checkpoint(state, is_best, checkpoint):
     torch.save(state, filepath)
     if is_best:
         shutil.copyfile(filepath, os.path.join(checkpoint, 'best.pth.tar'))
+    if save_each_epoch == "True":
+        shutil.copyfile(filepath, os.path.join(checkpoint, f'epoch={state["epoch"]:d}.pth.tar'))
 
 
 def load_checkpoint(checkpoint, model, optimizer=None, epoch=None):

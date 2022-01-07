@@ -5,7 +5,7 @@ import src.utils as utils
 
 import logging
 import os
-from src.utils import save_dict_to_json
+from src.utils import save_dict_to_json, check_exist_and_create
 from torch.utils.tensorboard import SummaryWriter
 
 
@@ -14,12 +14,15 @@ def training(model, optimizer, train_feature, train_target, restore_from=None,
              batch_size=None,
              experiment_dir=None,
              save_frequency=1,
-             verbose_frequency=1):
+             verbose_frequency=1,
+             save_each_epoch="False"):
     # Initialize tf.Saver instances to save weights during metrics_factory
     X_train = train_feature
     y_train = train_target
     begin_at_epoch = 0
     writer = SummaryWriter(os.path.join(experiment_dir, "summary"))
+    weights_path = os.path.join(experiment_dir, "weights")
+    check_exist_and_create(weights_path)
 
     if restore_from is not None:
         assert os.path.isfile(restore_from), "restore_from is not a file"
@@ -65,7 +68,8 @@ def training(model, optimizer, train_feature, train_target, restore_from=None,
                                    'state_dict': model.state_dict(),
                                    'optim_dict': optimizer.state_dict()},
                                   is_best=is_best,
-                                  checkpoint=experiment_dir)
+                                  checkpoint=weights_path,
+                                  save_each_epoch=save_each_epoch)
 
             # if best loss, update the "best_last_train_loss"
             if is_best:

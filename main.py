@@ -38,12 +38,12 @@ if __name__ == "__main__":
     if force_overwrite is True:
         safe_files = ["experiment_setting.json"]
         if args.restore_from is not None:
-            safe_files.append(os.path.split(args.restore_from)[-1])
+            safe_files.append(os.path.split(args.restore_from)[-2])
 
         if args.mode == "test":
             # every file under the root of the "experiment_dir"
             for file_folder in os.listdir(args.experiment_dir):
-                if os.path.isfile(file_folder):
+                if file_folder != "test":
                     safe_files.append(file_folder)
 
         # delete everything that is not in "safe_files"
@@ -131,5 +131,6 @@ if __name__ == "__main__":
                  restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
                  experiment_dir=args.experiment_dir,
                  save_frequency=params.save_frequency,
-                 verbose_frequency=params.verbose_frequency
+                 verbose_frequency=params.verbose_frequency,
+                 save_each_epoch=params.save_each_epoch
                  )
