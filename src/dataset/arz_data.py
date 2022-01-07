@@ -1,7 +1,6 @@
 # generatre arz data:
 import scipy.io
 import numpy as np
-# Noise level (in this noise free case is zero)
 
 class arz_data_loader():
 
