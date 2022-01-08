@@ -76,7 +76,7 @@ if __name__ == "__main__":
     # arz_data = arz_data_loader(params.data_arz['loop_number'],params.data_arz['noise_scale'],params.data_arz['noise_number'])
     # train_feature, train_label = arz_data.load_data()
     if params.data['type'] == 'lwr':
-        data_loaded = lwr_data_loader(params.data['loop_number'],params.data['noise_scale'],params.data['noise_number'])
+        data_loaded = lwr_data_loader(params.data['loop_number'],params.data['noise_scale'],params.data['noise_number'],params.data['noise_miu'],params.data['noise_sigma'])
     elif params.data['type'] == 'arz':
         data_loaded = arz_data_loader(params.data['loop_number'],params.data['noise_scale'],params.data['noise_number'])
     train_feature, train_label ,X,T= data_loaded.load_data()

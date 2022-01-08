@@ -4,14 +4,14 @@ import numpy as np
 
 class lwr_data_loader():
 
-    def __init__(self, Loop_number, Noise_scale, Noise_number):
+    def __init__(self, Loop_number, Noise_scale, Noise_number,noise_miu, noise_sigma):
 
         self.noise = Noise_scale
         self.N_noise = Noise_number 
         self.N_u = 100000
         self.N_loop = Loop_number
-        self.miu = 1
-        self.sigma = 0.3 # for generating gaussion noise
+        self.miu = noise_miu
+        self.sigma = noise_sigma # for generating gaussion noise
 
     def load_data(self):
         data = scipy.io.loadmat('data/lwr/rho_bellshape_10grid_DS10_gn_eps005_solver2_ring.mat')
