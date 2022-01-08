@@ -33,15 +33,12 @@
   "epochs": 5000,
   "save_frequency": 1,
   "verbose_frequency": 1,
-<<<<<<< HEAD
   "save_each_epoch": "True"
-=======
-  "data_arz":
+  "data":
   {
+    "type": "arz",
     "loop_number":6,
     "noise_scale":0.02,
     "noise_number":20
   }
-
->>>>>>> 91785f36382aee4ac729cd0c46a06e691a0a4c97
 }
