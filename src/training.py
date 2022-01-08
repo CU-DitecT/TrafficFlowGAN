@@ -64,7 +64,7 @@ def training(model, optimizer, train_feature, train_target, restore_from=None,
 
             # evaluation
             activation_eval = model.eval(x_batch)
-            a = activation_eval["x1_eval"].detach().numpy()
+            a = activation_eval["x1_eval"].detach().cpu().numpy()
             idx = np.argsort(a)[-1]
             # 4947
             a = 1

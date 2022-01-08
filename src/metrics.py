@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.stats import multivariate_normal
-from sklearn.metrics import mean_squared_error, mean_absolute_error
+# from sklearn.metrics import mean_squared_error, mean_absolute_error
 from src.metrics_factory.get_KL import get_KL
 from src.metrics_factory.get_NLPD import get_NLPD, get_NLPD_old
 

@@ -8,6 +8,7 @@ import torch
 
 from src.utils import Params, save_checkpoint, load_checkpoint
 from src.models.flow import RealNVP
+from src.models.flow_learning_z import RealNVP_lz
 # from src.metrics import instantiate_losses, instantiate_metrics, functionalize_metrics
 from src.utils import set_logger, delete_file_or_folder
 from src.training import training
@@ -26,7 +27,7 @@ else:
     logging.info("cuda is not available")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--experiment_dir', default='experiments/lwr',
+parser.add_argument('--experiment_dir', default='experiments/arz_learning_z',
                     help="Directory containing experiment_setting.json")
 parser.add_argument('--restore_from', default=None,
                     help="Optional, file location containing weights to reload")
@@ -102,16 +103,44 @@ if __name__ == "__main__":
     t_kwargs = {"activation_type": params.affine_coupling_layers["t_net"]["activation_type"],
                 "last_activation_type": params.affine_coupling_layers["t_net"]["last_activation_type"]}
 
-    metric_fns = [instantiate_metrics(i) for i in params.metrics]
+    # metric_fns = [instantiate_metrics(i) for i in params.metrics]
+    if params.learning_z == "false":
 
-    model = RealNVP(params.affine_coupling_layers["z_dim"],
-                    params.affine_coupling_layers["n_transformation"],
-                    device,
-                    s_args,
-                    t_args,
-                    s_kwargs,
-                    t_kwargs)
-    model.to(device)
+        model = RealNVP(params.affine_coupling_layers["z_dim"],
+                        params.affine_coupling_layers["n_transformation"],
+                        device,
+                        s_args,
+                        t_args,
+                        s_kwargs,
+                        t_kwargs)
+        model.to(device)
+    if params.learning_z == "True":
+
+        input_dim_z = params.affine_coupling_layers["c_dim"]
+        output_dim_z = params.affine_coupling_layers["z_dim"]
+        z_miu_args = (input_dim_z, output_dim_z, 
+              params.affine_coupling_layers["z_miu_net"]["n_hidden"],
+              params.affine_coupling_layers["z_miu_net"]["hidden_dim"])
+
+        z_sigma_args = (input_dim_z, output_dim_z,
+              params.affine_coupling_layers["z_sigma_net"]["n_hidden"],
+              params.affine_coupling_layers["z_sigma_net"]["hidden_dim"])
+        z_miu_kwargs = {"activation_type": params.affine_coupling_layers["z_miu_net"]["activation_type"],
+                "last_activation_type": params.affine_coupling_layers["z_miu_net"]["last_activation_type"]}
+
+        z_sigma_kwargs = {"activation_type": params.affine_coupling_layers["z_sigma_net"]["activation_type"],
+                "last_activation_type": params.affine_coupling_layers["z_sigma_net"]["last_activation_type"]}
+        model = RealNVP_lz(params.affine_coupling_layers["z_dim"],
+                        params.affine_coupling_layers["n_transformation"],
+                        device,
+                        s_args,
+                        t_args,
+                        s_kwargs,
+                        t_kwargs,
+                        z_miu_args,z_sigma_args,
+                        z_miu_kwargs,z_sigma_kwargs)
+        model.to(device)
+
     # create optimizer
     if params.affine_coupling_layers["optimizer"]["type"] == "Adam":
         optimizer = torch.optim.Adam([p for p in model.parameters() if p.requires_grad == True]

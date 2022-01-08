@@ -15,6 +15,7 @@ def instantiate_activation_function(function_name):
     function_dict = {
         "leaky_relu": nn.LeakyReLU(),
         "tanh": nn.Tanh(),
+        "sigmoid": nn.Sigmoid(),
         "none": None
     }
     return function_dict[function_name]

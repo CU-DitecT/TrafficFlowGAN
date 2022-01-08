@@ -41,5 +41,6 @@
     "noise_scale":0.02,
     "noise_number":20
   },
-  "metrics": ["rmse", "mae", "kl", "nlpd"]
+  "metrics": ["rmse", "mae", "kl", "nlpd"],
+  "learning_z" :"False"
 }
