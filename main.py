@@ -14,6 +14,8 @@ from src.training import training
 from src.dataset.arz_data import arz_data_loader
 from src.dataset.lwr_data import lwr_data_loader
 
+from src.metrics import instantiate_losses, instantiate_metrics, functionalize_metrics
+
 # CUDA support 
 if torch.cuda.is_available():
     device = torch.device('cuda:0')
@@ -99,6 +101,8 @@ if __name__ == "__main__":
 
     t_kwargs = {"activation_type": params.affine_coupling_layers["t_net"]["activation_type"],
                 "last_activation_type": params.affine_coupling_layers["t_net"]["last_activation_type"]}
+
+    metric_fns = [instantiate_metrics(i) for i in params.metrics]
 
     model = RealNVP(params.affine_coupling_layers["z_dim"],
                     params.affine_coupling_layers["n_transformation"],

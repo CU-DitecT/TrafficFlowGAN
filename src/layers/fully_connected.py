@@ -40,9 +40,14 @@ def get_fully_connected_layer(input_dim, output_dim, n_hidden, hidden_dim,
 
     modules.append(nn.Linear(hidden_dim, output_dim))
     last_activation = instantiate_activation_function(last_activation_type)
+
+    modules.append(Multiply(0.5))
     if last_activation_type == "none":
         pass
     else:
         modules.append(last_activation)
+    modules.append(Multiply(2))
+
+
 
     return nn.Sequential(*modules)

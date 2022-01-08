@@ -6,7 +6,7 @@ from src.layers.fully_connected import get_fully_connected_layer
 
 
 def get_mask(z_dim, n_transformation):
-    mask = np.ones((n_transformation, z_dim))
+    mask = np.ones((n_transformation, z_dim), dtype=np.float32)
     for i in range(mask.shape[0]):
         for j in range(mask.shape[1]):
             if (i + j) % 2 == 0:
@@ -29,7 +29,7 @@ class RealNVP(nn.Module):
         self.device = device
         self.t = torch.nn.ModuleList(t)
         self.s = torch.nn.ModuleList(s)
-        self.prior = torch.distributions.MultivariateNormal(torch.zeros(z_dim), torch.eye(z_dim))
+        self.prior = torch.distributions.MultivariateNormal(torch.zeros(z_dim), torch.eye(z_dim)*0.05)
 
     def g(self, z, c):
         # transform from z to x
@@ -54,13 +54,13 @@ class RealNVP(nn.Module):
         log_det_J = z.new_zeros(x.shape[0])  # log_det_J = x.new_zeros(x.shape[0])
         for i in reversed(range(len(self.t))):
             st_id = np.where(self.mask[i].cpu().numpy()==0)[0][0] # because mask=1 means keep the same value; mask=0 means using affine_coupling_layer
-            z_ = (self.mask[i]* z).float()  # z_ = (self.mask[i] * z)
+            z_ = self.mask[i]* z  # z_ = (self.mask[i] * z)
             s = (1 - self.mask[i]) * self.s[i](
                 torch.cat((z_, c_), 1))
-            #s = torch.clamp(s, min=-5, max=5)
+            s = torch.clamp(s, min=-5, max=5)
             t = (1 - self.mask[i]) * self.t[i](
                 torch.cat((z_, c_), 1))
-            # t = torch.clamp(t, min=-5, max=5)
+            t = torch.clamp(t, min=-5, max=5)
             z = (1 - self.mask[i]) * (z - t) * torch.exp(-s) + z_
             log_det_J -= s.sum(dim=1)
 
@@ -77,9 +77,22 @@ class RealNVP(nn.Module):
         z, log_p, activation = self.f(x, c)
         return self.prior.log_prob(z.float())  + log_p , activation
 
-    def test(self, c):
+    def eval(self, c):
+        torch.manual_seed(1)
         z = self.prior.sample((c.shape[0], 1))
         z = torch.squeeze(z)
+        c_ = torch.from_numpy(c).to(self.device)
         # log_p = self.prior.log_prob(z, c)
-        x = self.g(z, c)
+        x = self.g(z, c_)
+        activation = {"x1_eval": x[:, 0],
+                      "x2_eval": x[:, 1]}
+        return activation
+
+    def test(self, c):
+        torch.manual_seed(1)
+        z = self.prior.sample((c.shape[0], 1))
+        z = torch.squeeze(z)
+        c_ = torch.from_numpy(c).to(self.device)
+        # log_p = self.prior.log_prob(z, c)
+        x = self.g(z, c_)
         return x[:, 0:1], x[:, 1:2]
