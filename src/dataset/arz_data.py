@@ -91,4 +91,4 @@ class arz_data_loader():
         rho_u_repeat = rho_u_repeat.astype(np.float32)
         X_rho_u  = np.concatenate((rho_u_repeat, X_rho_repeat),axis=1)
 
-        return X_rho_repeat, rho_u_repeat
+        return X_rho_repeat, rho_u_repeat,X,T

@@ -7,7 +7,8 @@ import logging
 import os
 from src.utils import save_dict_to_json, check_exist_and_create
 from torch.utils.tensorboard import SummaryWriter
-
+from tqdm import tqdm
+from scipy.interpolate import griddata
 
 def training(model, optimizer, train_feature, train_target, restore_from=None,
              epochs=1000,
@@ -106,16 +107,24 @@ def training(model, optimizer, train_feature, train_target, restore_from=None,
             for k, v in activation_eval.items():
                 writer.add_histogram(f"activation_eval/{k:s}", v, epoch+1)
 
-
-def test(model, data_test,
+def test(model, test_feature, test_target, 
                 restore_from=None,
                 metric_functions = None,
                 n_samples = None,
-                params=None,
-         train_PUNN = True):
+                noise = 0.2,
+                params=None):
     # experiment_dir: where the model json file locates
     # Initialize tf.Saver instances to save weights during metrics_factory
 
+
+    if restore_from is not None:
+        assert os.path.isfile(restore_from), "restore_from is not a file"
+        # restore model
+        begin_at_epoch=0
+        begin_at_epoch = utils.load_checkpoint(restore_from, model,optimizer=None,epoch= begin_at_epoch)
+        logging.info(f"Restoring parameters from {restore_from}, restored epoch is {begin_at_epoch:d}")
+
+    """
     if restore_from is not None:
         if ("phys" in model.name) and (train_PUNN is False):
             meta_params = load_json(restore_from)
@@ -129,15 +138,47 @@ def test(model, data_test,
             model.load_weights(restore_from).expect_partial()
     else:
         raise FileExistsError("model not exist in "+ restore_from)
+    """
 
     # make prediction
-    pre_train = not train_PUNN
-    test_feature, test_target = data_test
-    test_prediction = model.predict(test_feature, n_repeat=n_samples, pre_train=pre_train)
+    #pre_train = not train_PUNN
+    #test_feature, test_target = data_test #need to load test data...
+    ###
+    #test_prediction = model.predict(test_feature, n_repeat=n_samples, pre_train=pre_train)
+
+    samples_mean_rho = np.zeros(( test_feature.shape[0], n_samples )) #115200,100
+    samples_mean_u = np.zeros(( test_feature.shape[0], n_samples ))
+    for i in tqdm(range(0, n_samples )):
+      rho_tensor, u_tensor = model.test(test_feature.astype(np.float32))
+      samples_mean_rho[:,i:i+1],samples_mean_u[:,i:i+1] = rho_tensor.detach().numpy(), u_tensor.detach().numpy()
+    rho_star=test_target[:,0][:,None]
+    u_star=test_target[:,1][:,None]
+    exact_sample_rho = rho_star
+    exact_sample_u = u_star
+    b = exact_sample_rho
+    c = exact_sample_u
+    
+    for i in range(n_samples -1):
+        bb = b + noise * np.random.randn(rho_star.shape[0],1)
+        exact_sample_rho = np.hstack((exact_sample_rho, bb))
+        cc = c + noise * np.random.randn(u_star.shape[0],1)
+        exact_sample_u = np.hstack((exact_sample_u, cc))
+    # Compare mean and variance of the predicted samples as prediction and uncertainty
+    RHO_pred = np.mean(samples_mean_rho, axis = 1) ##115200,1
+    U_pred = np.mean(samples_mean_u, axis = 1) ##115200,1
+    test_prediction=np.concatenate([RHO_pred[:,None],U_pred[:,None]],1) ## 115200,2
+    #test_target #115200,2
+    
+    """
+    RHO_pred = griddata( test_feature, RHO_pred.flatten(), (X, T), method='cubic')
+    U_pred = griddata(test_feature, U_pred.flatten(), (X, T), method='cubic')
+    """
+
+
 
     # convert to numpy
-    test_target = test_target.numpy()
-    test_prediction = test_prediction.numpy()
+    #test_target = test_target.numpy() #115200,2
+    #test_prediction = test_prediction.numpy() #??
 
     metrics_dict = dict()
     kl = None
@@ -148,24 +189,33 @@ def test(model, data_test,
                                    use_mean = use_mean,
                                    n_bands = params.nlpd_n_bands)]
         elif k == "kl":
+            
+            ###BCE with logit:
+            kl = func(torch.from_numpy(test_target), torch.from_numpy(test_prediction))
+            metrics_dict[k] =kl
+            
+            """
+            ###get_KL:
             kl = func(test_target, test_prediction)
             metrics_dict[k] = [np.mean(kl)]
+            """
         else:
-            metrics_dict[k] = [func(test_target, test_prediction)]
+           metrics_dict[k] = [func(torch.from_numpy(test_target), torch.from_numpy(test_prediction))]
 
 
     return metrics_dict, test_prediction, kl
+    
 
 
 
+#test(model,test_feature,test_label,restore_from=restore_from,metric_functions=metric_fns,n_samples=args.test_sample,noise=args.noise,params=params)
 
-
-def test_multiple_rounds(model, data_test, test_rounds,
+def test_multiple_rounds(model, test_feature,test_label, test_rounds,
                          save_dir = None,
                          model_alias = None,
                         train_PUNN = True,
                 **kwargs):
-    metrics_dict, test_prediction, kl = test(model, data_test, train_PUNN=train_PUNN,
+    metrics_dict, test_prediction, kl = test(model, test_feature,test_label, train_PUNN=train_PUNN,
                                          **kwargs)
     logging.info("Restoring parameters from {}".format(kwargs["restore_from"]))
     if test_rounds > 1:

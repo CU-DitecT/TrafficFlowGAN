@@ -10,7 +10,7 @@ from src.utils import Params, save_checkpoint, load_checkpoint
 from src.models.flow import RealNVP
 # from src.metrics import instantiate_losses, instantiate_metrics, functionalize_metrics
 from src.utils import set_logger, delete_file_or_folder
-from src.training import training
+from src.training import training,test,test_multiple_rounds
 from src.dataset.arz_data import arz_data_loader
 from src.dataset.lwr_data import lwr_data_loader
 
@@ -26,13 +26,16 @@ else:
     logging.info("cuda is not available")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--experiment_dir', default='experiments/lwr',
+parser.add_argument('--experiment_dir', default='experiments/arz',
                     help="Directory containing experiment_setting.json")
 parser.add_argument('--restore_from', default=None,
                     help="Optional, file location containing weights to reload")
 parser.add_argument('--mode', default='train',
                     help="train, test, or train_and_test")
 parser.add_argument('--n_hidden', default=3)
+parser.add_argument('--noise', default=0.2)
+parser.add_argument('--test_sample', default=3)
+
 
 parser.add_argument('--force_overwrite', default=False, action='store_true',
                     help="For debug. Force to overwrite")
@@ -76,7 +79,10 @@ if __name__ == "__main__":
         data_loaded = lwr_data_loader(params.data['loop_number'],params.data['noise_scale'],params.data['noise_number'])
     elif params.data['type'] == 'arz':
         data_loaded = arz_data_loader(params.data['loop_number'],params.data['noise_scale'],params.data['noise_number'])
-    train_feature, train_label = data_loaded.load_data()
+    train_feature, train_label ,X,T= data_loaded.load_data()
+    test_feature= train_feature
+    test_label=  train_label
+    
     logging.info("load data: " + f"{params.data['type']}")
     logging.info("train feature shape: " + f"{train_feature.shape}")
     logging.info("train label shape: " + f"{train_label.shape}")
@@ -103,7 +109,10 @@ if __name__ == "__main__":
                 "last_activation_type": params.affine_coupling_layers["t_net"]["last_activation_type"]}
 
     metric_fns = [instantiate_metrics(i) for i in params.metrics]
-
+    metric_fns=dict(zip(params.metrics, metric_fns))
+    
+    #metric_fns = [    functionalize_metrics(i) for i in params.metrics]
+    
     model = RealNVP(params.affine_coupling_layers["z_dim"],
                     params.affine_coupling_layers["n_transformation"],
                     device,
@@ -140,6 +149,7 @@ if __name__ == "__main__":
     # "test"
     #
     # restore_from: the directory for the model file.
+    """
     if args.mode == "train" or args.mode == "train_and_test":
         logging.info("Starting training for {} epoch(s)".format(params.epochs))
         training(model, optimizer, train_feature, train_label,
@@ -149,3 +159,44 @@ if __name__ == "__main__":
                  verbose_frequency=params.verbose_frequency,
                  save_each_epoch=params.save_each_epoch
                  )
+    """
+    #restore_from=os.path.join(args.experiment_dir, "weights\last.pth.tar")  
+    #print(test(model,test_feature,test_label,restore_from=restore_from,metric_functions=metric_fns,n_samples=args.test_sample,noise=args.noise,params=params))
+    #print('######################################')
+
+    if args.mode == "train" :
+        logging.info("Starting training for {} epoch(s)".format(params.epochs))
+        training(model, optimizer, train_feature, train_label,
+                 restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
+                 experiment_dir=args.experiment_dir,
+                 save_frequency=params.save_frequency,
+                 verbose_frequency=params.verbose_frequency,
+                 save_each_epoch=params.save_each_epoch
+                 )
+
+    if args.mode == "train_and_test":
+        logging.info("Starting training for {} epoch(s)".format(params.epochs))
+        training(model, optimizer, train_feature, train_label,
+                 restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
+                 experiment_dir=args.experiment_dir,
+                 save_frequency=params.save_frequency,
+                 verbose_frequency=params.verbose_frequency,
+                 save_each_epoch=params.save_each_epoch
+                 )
+        restore_from=os.path.join(args.experiment_dir, "weights\last.pth.tar")    
+        logging.info("Starting testing")
+
+
+        ##
+        #need to do: sav_dir for multiple round test 
+        #test(model,test_feature,test_label,restore_from=restore_from,metric_functions=metric_fns,n_samples=args.test_sample,noise=args.noise,params=params)
+        """???logging.inf
+        test()
+        test_multiple_rounds
+        """
+    
+    if args.mode == "test":
+        """????????????logging.info("Starting training for {} epoch(s)".format(params.epochs))        
+        test()
+        test_multiple_rounds"""
+    

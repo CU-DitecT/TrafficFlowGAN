@@ -30,7 +30,7 @@
     "train": "False"
   },
   "batch_size":5000,
-  "epochs": 5000,
+  "epochs": 3,
   "save_frequency": 1,
   "verbose_frequency": 1,
   "save_each_epoch": "False",
@@ -41,5 +41,7 @@
     "noise_scale":0.02,
     "noise_number":20
   },
-  "metrics": ["rmse", "mae", "kl", "nlpd"]
+  "metrics": ["rmse", "mae", "kl", "nlpd"],
+"nlpd_use_mean":"True",
+"nlpd_n_bands":1000
 }
