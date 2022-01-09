@@ -27,7 +27,7 @@ else:
     logging.info("cuda is not available")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--experiment_dir', default='experiments/arz_learning_z',
+parser.add_argument('--experiment_dir', default='experiments/lwr_learning_z',
                     help="Directory containing experiment_setting.json")
 parser.add_argument('--restore_from', default=None,
                     help="Optional, file location containing weights to reload")
