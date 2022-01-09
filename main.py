@@ -27,11 +27,7 @@ else:
     logging.info("cuda is not available")
 
 parser = argparse.ArgumentParser()
-<<<<<<< HEAD
 parser.add_argument('--experiment_dir', default='experiments/arz_learning_z',
-=======
-parser.add_argument('--experiment_dir', default='experiments/arz',
->>>>>>> 899460b5fd07f7363dda70638e3b826ad29defd3
                     help="Directory containing experiment_setting.json")
 parser.add_argument('--restore_from', default=None,
                     help="Optional, file location containing weights to reload")
@@ -113,8 +109,9 @@ if __name__ == "__main__":
     t_kwargs = {"activation_type": params.affine_coupling_layers["t_net"]["activation_type"],
                 "last_activation_type": params.affine_coupling_layers["t_net"]["last_activation_type"]}
 
-<<<<<<< HEAD
     # metric_fns = [instantiate_metrics(i) for i in params.metrics]
+    metric_fns = [instantiate_metrics(i) for i in params.metrics]
+    metric_fns=dict(zip(params.metrics, metric_fns))
     if params.learning_z == "false":
 
         model = RealNVP(params.affine_coupling_layers["z_dim"],
@@ -152,21 +149,6 @@ if __name__ == "__main__":
                         z_miu_kwargs,z_sigma_kwargs)
         model.to(device)
 
-=======
-    metric_fns = [instantiate_metrics(i) for i in params.metrics]
-    metric_fns=dict(zip(params.metrics, metric_fns))
-    
-    #metric_fns = [    functionalize_metrics(i) for i in params.metrics]
-    
-    model = RealNVP(params.affine_coupling_layers["z_dim"],
-                    params.affine_coupling_layers["n_transformation"],
-                    device,
-                    s_args,
-                    t_args,
-                    s_kwargs,
-                    t_kwargs)
-    model.to(device)
->>>>>>> 899460b5fd07f7363dda70638e3b826ad29defd3
     # create optimizer
     if params.affine_coupling_layers["optimizer"]["type"] == "Adam":
         optimizer = torch.optim.Adam([p for p in model.parameters() if p.requires_grad == True]
