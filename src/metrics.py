@@ -3,22 +3,40 @@ from scipy.stats import multivariate_normal
 # from sklearn.metrics import mean_squared_error, mean_absolute_error
 from src.metrics_factory.get_KL import get_KL
 from src.metrics_factory.get_NLPD import get_NLPD, get_NLPD_old
-
+import torch
 
 def instantiate_losses(loss_name):
     loss_dict = {
-        "mse":tf.keras.losses.MeanSquaredError(name="mean_squared_error"), # should change to torch loss
-        "kl":tf.keras.losses.BinaryCrossentropy(from_logits=True, name="binary_crossentropy") # should change to torch loss
+        #"mse":tf.keras.losses.MeanSquaredError(name="mean_squared_error"), # should change to torch loss
+        "mse":torch.nn.MSELoss(),
+        #"kl":tf.keras.losses.BinaryCrossentropy(from_logits=True, name="binary_crossentropy") # should change to torch loss
+        "kl":torch.nn.BCEWithLogitsLoss() #??kl divergence or bce with logith
     }
 
 
     return loss_dict[loss_name]
 
+
+#there is no built-in RMSE loss in torch
+class RMSELoss(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.mse = torch.nn.MSELoss()
+        
+    def forward(self,yhat,y):
+        return torch.sqrt(self.mse(yhat,y))
+
 def instantiate_metrics(metric_name):
     metric_dict = {
-        "mse": tf.keras.metrics.MeanSquaredError(), # should change to torch loss
-        "rmse": tf.keras.metrics.RootMeanSquaredError(), # should change to torch loss
-        "mae": tf.keras.metrics.MeanAbsoluteError(), # should change to torch loss
+        #"mse": tf.keras.metrics.MeanSquaredError(), # should change to torch loss
+        "mse":torch.nn.MSELoss(),
+        #"rmse": tf.keras.metrics.RootMeanSquaredError(), # should change to torch loss
+        "rmse":RMSELoss(),
+        #"mae": tf.keras.metrics.MeanAbsoluteError(), # should change to torch loss
+        "mae":torch.nn.L1Loss(),
+        #"kl": torch.nn.BCEWithLogitsLoss(),
+        "kl": lambda y, y_pred: get_KL(y, y_pred),
+         "nlpd": get_NLPD
     }
 
     return metric_dict[metric_name]

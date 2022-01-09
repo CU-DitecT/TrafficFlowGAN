@@ -84,7 +84,7 @@ class lwr_data_loader():
         gaussion_noise = np.random.normal(self.miu,self.sigma,rho_train_repeat.shape[0]).reshape(-1,1)
         rho_noisie_repeat  = np.concatenate((rho_train_repeat, gaussion_noise),axis=1)
 
-        return X_rho_repeat.astype(np.float32), rho_noisie_repeat.astype(np.float32)
+        return X_rho_repeat.astype(np.float32), rho_noisie_repeat.astype(np.float32),X,T
 
 
 
