@@ -7,13 +7,10 @@ import logging
 import os
 from src.utils import save_dict_to_json, check_exist_and_create
 from torch.utils.tensorboard import SummaryWriter
-<<<<<<< HEAD
 
 import time
-=======
 from tqdm import tqdm
 from scipy.interpolate import griddata
->>>>>>> 5d71470f6721e319013a3ae960df37aeb186ccb0
 
 
 def training(model, optimizer, train_feature, train_target,
@@ -153,14 +150,7 @@ def training(model, optimizer, train_feature, train_target,
             for k, v in activation_eval.items():
                 writer.add_histogram(f"activation_eval/{k:s}", v, epoch+1)
 
-<<<<<<< HEAD
-
-
-
-def test(model, data_test,
-=======
 def test(model, test_feature, test_target, 
->>>>>>> 5d71470f6721e319013a3ae960df37aeb186ccb0
                 restore_from=None,
                 metric_functions = None,
                 n_samples = None,

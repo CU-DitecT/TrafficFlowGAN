@@ -31,7 +31,7 @@
     "optimizer": {
       "type": "Adam",
       "kwargs": {
-        "lr": 0.001
+        "lr": 0.002
       }
     },
     "train": "True"
