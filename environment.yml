@@ -8,3 +8,6 @@ dependencies:
     - tensorboard
     - setuptools==59.5
     - scipy
+    - scikit-learn
+    - matplotlib
+    - tqdm

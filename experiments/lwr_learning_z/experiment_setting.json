@@ -1,0 +1,60 @@
+{
+  "affine_coupling_layers":
+  {
+    "z_dim": 2,
+    "c_dim": 2,
+    "n_transformation": 6,
+    "s_net": {
+      "n_hidden": 2,
+      "hidden_dim": 256,
+      "activation_type": "leaky_relu",
+      "last_activation_type": "tanh"
+    },
+    "t_net": {
+      "n_hidden": 2,
+      "hidden_dim": 256,
+      "activation_type": "leaky_relu",
+      "last_activation_type": "tanh"
+    },
+    "z_miu_net": {
+      "n_hidden": 2,
+      "hidden_dim": 64,
+      "activation_type": "leaky_relu",
+      "last_activation_type": "tanh"
+    },
+    "z_sigma_net": {
+      "n_hidden": 2,
+      "hidden_dim": 64,
+      "activation_type": "leaky_relu",
+      "last_activation_type": "sigmoid"
+    },
+    "optimizer": {
+      "type": "Adam",
+      "kwargs": {
+        "lr": 0.001
+      }
+    },
+    "train": "True"
+  },
+  "physics":
+  {
+    "type": "lwr",
+    "train": "False"
+  },
+  "batch_size":5000,
+  "epochs": 5000,
+  "save_frequency": 1,
+  "verbose_frequency": 1,
+  "save_each_epoch": "False",
+  "data":
+  {
+    "type": "lwr",
+    "loop_number":6,
+    "noise_scale":0.02,
+    "noise_number":20,
+    "noise_miu":0,
+    "noise_sigma":0.5
+  },
+  "metrics": ["rmse", "mae", "kl", "nlpd"],
+  "learning_z" :"True"
+}
