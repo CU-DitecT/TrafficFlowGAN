@@ -37,7 +37,7 @@ parser.add_argument('--mode', default='train',
                     help="train, test, or train_and_test")
 parser.add_argument('--n_hidden', default=3)
 parser.add_argument('--noise', default=0.2)
-parser.add_argument('--test_sample', default=3) 
+parser.add_argument('--test_sample', default=100) 
 parser.add_argument('--nlpd_use_mean', default='True') 
 parser.add_argument('--nlpd_n_bands', default=1000) 
 
@@ -201,21 +201,9 @@ if __name__ == "__main__":
     #
     # restore_from: the directory for the model file.
 
-    restore_from=os.path.join(args.experiment_dir, "weights\last.pth.tar") 
-    save_dir=os.path.join(args.experiment_dir, "test_result/") 
-    model_alias=args.experiment_dir.split('/')[-1]
-
     #test(model,test_feature,test_label,   restore_from=restore_from,metric_functions=metric_fns,n_samples=args.test_sample,noise=args.noise,args=args)
-
     
-    
-    test_multiple_rounds(model,test_feature,test_label,test_rounds=2,save_dir =save_dir ,model_alias = model_alias,
-                         restore_from=restore_from,metric_functions=metric_fns,n_samples=2,noise=args.noise,args=args)
-    print('done')
-
-    """
-    
-    if args.mode == "train" or args.mode == "train_and_test":
+    if args.mode == "train" :
         logging.info("Starting training for {} epoch(s)".format(params.epochs))
         training(model, optimizer, train_feature, train_label,
                  restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
@@ -227,5 +215,31 @@ if __name__ == "__main__":
                  save_each_epoch=params.save_each_epoch
                  )
 
-    """
+    
+    if args.mode == "train_and_test":
+        logging.info("Starting training for {} epoch(s)".format(params.epochs))
+        training(model, optimizer, train_feature, train_label,
+                 restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
+                 physics=physics,
+                 physics_optimizer=optimizer_physics,
+                 experiment_dir=args.experiment_dir,
+                 save_frequency=params.save_frequency,
+                 verbose_frequency=params.verbose_frequency,
+                 save_each_epoch=params.save_each_epoch
+                 )
+        restore_from=os.path.join(args.experiment_dir, "weights\last.pth.tar") 
+        save_dir=os.path.join(args.experiment_dir, "test_result/") 
+        model_alias=args.experiment_dir.split('/')[-1]    
+        test_multiple_rounds(model,test_feature,test_label,test_rounds=2,save_dir =save_dir ,model_alias = model_alias,
+                         restore_from=restore_from,metric_functions=metric_fns,n_samples=2,noise=args.noise,args=args)
+        print('done')
+    
+    if args.mode == "test":        
+        restore_from=os.path.join(args.experiment_dir, "weights\last.pth.tar") 
+        save_dir=os.path.join(args.experiment_dir, "test_result/") 
+        model_alias=args.experiment_dir.split('/')[-1]    
+        test_multiple_rounds(model,test_feature,test_label,test_rounds=2,save_dir =save_dir ,model_alias = model_alias,
+                         restore_from=restore_from,metric_functions=metric_fns,n_samples=2,noise=args.noise,args=args)
+        print('done')
+
     
