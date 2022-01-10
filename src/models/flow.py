@@ -92,7 +92,10 @@ class RealNVP(nn.Module):
         torch.manual_seed(1)
         z = self.prior.sample((c.shape[0], 1))
         z = torch.squeeze(z)
-        c_ = torch.from_numpy(c).to(self.device)
+        if torch.is_tensor(c):
+            c_ = c
+        else:
+            c_ = torch.from_numpy(c).to(self.device)
         # log_p = self.prior.log_prob(z, c)
         x = self.g(z, c_)
         return x[:, 0:1], x[:, 1:2]

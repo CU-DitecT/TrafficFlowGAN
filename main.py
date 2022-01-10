@@ -14,6 +14,8 @@ from src.training import training
 from src.dataset.arz_data import arz_data_loader
 from src.dataset.lwr_data import lwr_data_loader
 
+from src.layers.physics import GaussianLWR
+
 from src.metrics import instantiate_losses, instantiate_metrics, functionalize_metrics
 
 # CUDA support 
@@ -102,7 +104,6 @@ if __name__ == "__main__":
     t_kwargs = {"activation_type": params.affine_coupling_layers["t_net"]["activation_type"],
                 "last_activation_type": params.affine_coupling_layers["t_net"]["last_activation_type"]}
 
-    metric_fns = [instantiate_metrics(i) for i in params.metrics]
 
     model = RealNVP(params.affine_coupling_layers["z_dim"],
                     params.affine_coupling_layers["n_transformation"],
@@ -112,12 +113,33 @@ if __name__ == "__main__":
                     s_kwargs,
                     t_kwargs)
     model.to(device)
+
+    # get physics
+    if params.physics["type"] == "lwr":
+        physics = GaussianLWR(params.physics["meta_params_value"],
+                              params.physics["meta_params_trainable"],
+                              params.physics["lower_bounds"],
+                              params.physics["upper_bounds"],
+                              params.physics["hypers"],
+                              train = (params.physics["train"] == "True"))
+        physics.to(device)
+    elif params.physics["type"] == "none":
+        physics = None
+    else:
+        raise ValueError("physics type not in searching domain.")
+
     # create optimizer
     if params.affine_coupling_layers["optimizer"]["type"] == "Adam":
         optimizer = torch.optim.Adam([p for p in model.parameters() if p.requires_grad == True]
                                      , **params.affine_coupling_layers["optimizer"]["kwargs"])
     else:
         raise ValueError("optimizer not in searching domain.")
+
+    if params.physics["optimizer"]["type"] == "Adam":
+        optimizer_physics = torch.optim.Adam([p for p in physics.torch_meta_params.values() if p.requires_grad == True]
+                                     , **params.physics["optimizer"]["kwargs"])
+    elif params.physics["optimizer"]["type"] == "none":
+        optimizer_physics = None
 
     ##########################################
     # Train the model
@@ -144,6 +166,8 @@ if __name__ == "__main__":
         logging.info("Starting training for {} epoch(s)".format(params.epochs))
         training(model, optimizer, train_feature, train_label,
                  restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
+                 physics=physics,
+                 physics_optimizer=optimizer_physics,
                  experiment_dir=args.experiment_dir,
                  save_frequency=params.save_frequency,
                  verbose_frequency=params.verbose_frequency,

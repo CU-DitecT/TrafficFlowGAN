@@ -27,7 +27,35 @@
   "physics":
   {
     "type": "arz",
-    "train": "False"
+    "train": "False",
+    "loss_fn": "raissi",
+    "hypers": {"alpha": 1},
+    "optimizer": {
+      "type": "Adam",
+      "kwargs": {
+        "lr": 0.001
+      }
+    },
+    "meta_params_value": {
+            "mu_rhomax":2,
+            "mu_umax": 0.2,
+            "mu_tau": 8
+        },
+      "meta_params_trainable": {
+        "mu_rhomax": "True",
+        "mu_umax": "True",
+        "mu_tau": "True"
+      },
+      "lower_bounds": {
+        "mu_rhomax":2,
+        "mu_umax": 0.2,
+        "mu_tau": 8
+      },
+      "upper_bounds": {
+        "mu_rhomax":2,
+        "mu_umax": 0.2,
+        "mu_tau": 8
+      }
   },
   "batch_size":5000,
   "epochs": 5000,
