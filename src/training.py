@@ -189,8 +189,10 @@ def test(model, test_feature, test_target,
     ###
     #test_prediction = model.predict(test_feature, n_repeat=n_samples, pre_train=pre_train)
 
-    samples_mean_rho = np.zeros(( test_feature.shape[0], n_samples )) #115200,100
+    samples_mean_rho = np.zeros(( test_feature.shape[0], n_samples )) #115200,n_samples
     samples_mean_u = np.zeros(( test_feature.shape[0], n_samples ))
+    torch.manual_seed(1)
+    np.random.seed(1)
     for i in tqdm(range(0, n_samples )):
       rho_tensor, u_tensor = model.test(test_feature.astype(np.float32))
       samples_mean_rho[:,i:i+1],samples_mean_u[:,i:i+1] = rho_tensor.detach().numpy(), u_tensor.detach().numpy()
