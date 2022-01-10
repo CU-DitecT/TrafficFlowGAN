@@ -8,13 +8,13 @@
       "n_hidden": 2,
       "hidden_dim": 256,
       "activation_type": "leaky_relu",
-      "last_activation_type": "none"
+      "last_activation_type": "tanh"
     },
     "t_net": {
       "n_hidden": 2,
       "hidden_dim": 256,
       "activation_type": "leaky_relu",
-      "last_activation_type": "none"
+      "last_activation_type": "tanh"
     },
     "optimizer": {
       "type": "Adam",
@@ -26,22 +26,61 @@
   },
   "physics":
   {
-    "type": "arz",
-    "train": "False"
+    "type": "lwr",
+    "train": "True",
+    "loss_fn": "raissi",
+    "hypers": {"alpha": 0.5,
+                "n_repeat": 1},
+    "optimizer": {
+      "type": "Adam",
+      "kwargs": {
+        "lr": 0.01
+      }
+    },
+    "meta_params_value": {
+            "mu_rhomax":1.5,
+            "mu_umax": 1.5,
+            "mu_tau": 0,
+            "sigma_rhomax": 0,
+            "sigma_umax": 0,
+            "sigma_tau": 0
+        },
+      "meta_params_trainable": {
+        "mu_rhomax": "True",
+        "mu_umax": "True",
+        "mu_tau": "False",
+        "sigma_rhomax": "False",
+        "sigma_umax": "False",
+        "sigma_tau": "False"
+      },
+      "lower_bounds": {
+        "mu_rhomax":0,
+        "mu_umax": 0,
+        "mu_tau": 0,
+        "sigma_rhomax": 0,
+        "sigma_umax": 0,
+        "sigma_tau": 0
+      },
+      "upper_bounds": {
+        "mu_rhomax":2,
+        "mu_umax": 2,
+        "mu_tau": 1,
+        "sigma_rhomax": 1,
+        "sigma_umax": 1,
+        "sigma_tau": 1
+      }
   },
-  "batch_size":20000,
-  "epochs": 5000,
+  "batch_size":5000,
+  "epochs": 1000,
   "save_frequency": 1,
   "verbose_frequency": 1,
-  "save_each_epoch": "True",
+  "save_each_epoch": "False",
   "data":
   {
-    "type": "lwr",
+    "type": "arz",
     "loop_number":6,
     "noise_scale":0.02,
-    "noise_number":20,
-    "noise_miu":0,
-    "noise_sigma":0.5
+    "noise_number":20
   },
-  "learning_z" :"False"
+  "metrics": ["rmse", "mae", "kl", "nlpd"]
 }
