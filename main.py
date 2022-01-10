@@ -37,8 +37,9 @@ parser.add_argument('--mode', default='train',
                     help="train, test, or train_and_test")
 parser.add_argument('--n_hidden', default=3)
 parser.add_argument('--noise', default=0.2)
-parser.add_argument('--test_sample', default=3)
-
+parser.add_argument('--test_sample', default=3) 
+parser.add_argument('--nlpd_use_mean', default='True') 
+parser.add_argument('--nlpd_n_bands', default=1000) 
 
 parser.add_argument('--force_overwrite', default=False, action='store_true',
                     help="For debug. Force to overwrite")
@@ -50,7 +51,7 @@ if __name__ == "__main__":
     json_path = os.path.join(args.experiment_dir, 'experiment_setting.json')
     assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
     params = Params(json_path)
-
+    
     # Safe Overwrite. Avoid to overwrite the previous experiment by mistake.
     force_overwrite = args.force_overwrite
     if force_overwrite is True:
@@ -199,6 +200,20 @@ if __name__ == "__main__":
     # "test"
     #
     # restore_from: the directory for the model file.
+
+    restore_from=os.path.join(args.experiment_dir, "weights\last.pth.tar") 
+    save_dir=os.path.join(args.experiment_dir, "test_result/") 
+    model_alias=args.experiment_dir.split('/')[-1]
+
+    #test(model,test_feature,test_label,   restore_from=restore_from,metric_functions=metric_fns,n_samples=args.test_sample,noise=args.noise,args=args)
+
+    
+    
+    test_multiple_rounds(model,test_feature,test_label,test_rounds=2,save_dir =save_dir ,model_alias = model_alias,
+                         restore_from=restore_from,metric_functions=metric_fns,n_samples=2,noise=args.noise,args=args)
+    print('done')
+
+    """
     
     if args.mode == "train" or args.mode == "train_and_test":
         logging.info("Starting training for {} epoch(s)".format(params.epochs))
@@ -211,4 +226,6 @@ if __name__ == "__main__":
                  verbose_frequency=params.verbose_frequency,
                  save_each_epoch=params.save_each_epoch
                  )
+
+    """
     

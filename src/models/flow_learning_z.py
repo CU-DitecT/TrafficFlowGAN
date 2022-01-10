@@ -103,7 +103,7 @@ class RealNVP_lz(nn.Module):
         return activation
 
     def test(self, c):
-        torch.manual_seed(1)
+        #torch.manual_seed(1)
         z = self.prior.sample((c.shape[0], 1))
         z = torch.squeeze(z)
         miu,sigma = self.NN_z(c)
