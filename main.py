@@ -231,7 +231,7 @@ if __name__ == "__main__":
         save_dir=os.path.join(args.experiment_dir, "test_result/") 
         model_alias=args.experiment_dir.split('/')[-1]    
         test_multiple_rounds(model,test_feature,test_label,test_rounds=2,save_dir =save_dir ,model_alias = model_alias,
-                         restore_from=restore_from,metric_functions=metric_fns,n_samples=2,noise=args.noise,args=args)
+                         restore_from=restore_from,metric_functions=metric_fns,n_samples=args.test_sample,noise=args.noise,args=args)
         print('done')
     
     if args.mode == "test":        
@@ -239,7 +239,7 @@ if __name__ == "__main__":
         save_dir=os.path.join(args.experiment_dir, "test_result/") 
         model_alias=args.experiment_dir.split('/')[-1]    
         test_multiple_rounds(model,test_feature,test_label,test_rounds=2,save_dir =save_dir ,model_alias = model_alias,
-                         restore_from=restore_from,metric_functions=metric_fns,n_samples=2,noise=args.noise,args=args)
+                         restore_from=restore_from,metric_functions=metric_fns,n_samples=args.test_sample,noise=args.noise,args=args)
         print('done')
 
     
