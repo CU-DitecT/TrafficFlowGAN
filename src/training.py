@@ -13,7 +13,7 @@ from tqdm import tqdm
 from scipy.interpolate import griddata
 
 
-def training(model, optimizer, train_feature, train_target,
+def training(model, optimizer, train_feature, train_target, train_feature_phy,
              physics=None,
              physics_optimizer=None,
              restore_from=None,
@@ -26,6 +26,7 @@ def training(model, optimizer, train_feature, train_target,
     # Initialize tf.Saver instances to save weights during metrics_factory
     X_train = train_feature
     y_train = train_target
+    X_train_phy = train_feature_phy
     begin_at_epoch = 0
     writer = SummaryWriter(os.path.join(experiment_dir, "summary"))
     weights_path = os.path.join(experiment_dir, "weights")
@@ -49,8 +50,10 @@ def training(model, optimizer, train_feature, train_target,
         # shuffle the data
         np.random.seed(1)
         idx = np.random.choice(X_train.shape[0], X_train.shape[0], replace=False)
+        idx_phy = np.random.choice(X_train_phy.shape[0], X_train_phy.shape[0], replace=False)
         X_train = X_train[idx, :]
         y_train = y_train[idx, :]
+        X_train_phy = X_train_phy[idx_phy,:]
 
 
         #### hard code
@@ -59,10 +62,11 @@ def training(model, optimizer, train_feature, train_target,
 
         # train step
         num_steps = X_train.shape[0] // batch_size
+        batch_size_phy = X_train_phy.shape[0] // num_steps
         for step in range(num_steps):
             x_batch = X_train[step * batch_size:(step + 1) * batch_size, :]
             y_batch = y_train[step * batch_size:(step + 1) * batch_size, :]
-
+            x_batch_phy = X_train_phy[step * batch_size_phy:(step + 1) * batch_size_phy, :]
             start_time = time.time()
             loss, activation = model.log_prob(y_batch, x_batch)
             loss = -loss.mean()
@@ -75,7 +79,7 @@ def training(model, optimizer, train_feature, train_target,
             # get physics_loss
             if physics is not None:
                 start_time = time.time()
-                phy_loss, physics_params = physics.get_residuals(model, x_batch)
+                phy_loss, physics_params = physics.get_residuals(model, x_batch_phy)
                 loss_phy_time = time.time() - start_time
 
                 loss = loss * physics.hypers["alpha"]

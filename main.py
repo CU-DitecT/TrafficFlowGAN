@@ -81,13 +81,13 @@ if __name__ == "__main__":
     # train_feature, train_label = arz_data.load_data()
     if params.data['type'] == 'lwr':
         data_loaded = lwr_data_loader(params.data['loop_number'],params.data['noise_scale'],params.data['noise_number'],params.data['noise_miu'],params.data['noise_sigma'])
-        train_feature, train_label ,X,T= data_loaded.load_data()
+        train_feature, train_label, train_feature_phy, X, T= data_loaded.load_data()
         Exact_rho = data_loaded.load_test()
         print('test shape', Exact_rho.shape)
 
     elif params.data['type'] == 'arz':
         data_loaded = arz_data_loader(params.data['loop_number'],params.data['noise_scale'],params.data['noise_number'])
-        train_feature, train_label ,X,T= data_loaded.load_data()
+        train_feature, train_label, train_feature_phy, X, T= data_loaded.load_data()
         Exact_rho, Exact_u = data_loaded.load_test()
     
     test_feature= train_feature
@@ -211,7 +211,7 @@ if __name__ == "__main__":
     
     if args.mode == "train" :
         logging.info("Starting training for {} epoch(s)".format(params.epochs))
-        training(model, optimizer, train_feature, train_label,
+        training(model, optimizer, train_feature, train_label, train_feature_phy,
                  restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
                  physics=physics,
                  physics_optimizer=optimizer_physics,
