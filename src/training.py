@@ -194,7 +194,7 @@ def test(model, test_feature, test_target,
     torch.manual_seed(1)
     np.random.seed(1)
     for i in tqdm(range(0, n_samples )):
-      rho_tensor, u_tensor = model.test(test_feature.astype(np.float32))
+      rho_tensor, u_tensor = model.test(torch.from_numpy(test_feature))
       samples_mean_rho[:,i:i+1],samples_mean_u[:,i:i+1] = rho_tensor.detach().numpy(), u_tensor.detach().numpy()
     rho_star=test_target[:,0][:,None]
     u_star=test_target[:,1][:,None]
@@ -213,7 +213,6 @@ def test(model, test_feature, test_target,
     U_pred = np.mean(samples_mean_u, axis = 1) ##115200,1
     test_prediction=np.concatenate([RHO_pred[:,None],U_pred[:,None]],1) ## 115200,2
     #test_target #115200,2
-    
     """
     RHO_pred = griddata( test_feature, RHO_pred.flatten(), (X, T), method='cubic')
     U_pred = griddata(test_feature, U_pred.flatten(), (X, T), method='cubic')
@@ -239,7 +238,7 @@ def test(model, test_feature, test_target,
             use_mean = True if args.nlpd_use_mean == "True" else False
             metrics_dict[k] = [func(test_target, test_prediction,
                                    use_mean = use_mean,
-                                   n_bands = args.nlpd_n_bands)]
+                                   n_bands = args.nlpd_n_bands)]            
         elif k == "kl":
             
             ###BCE with logit:
@@ -258,7 +257,7 @@ def test(model, test_feature, test_target,
             
         else:
            metrics_dict[k] = [func(torch.from_numpy(test_target), torch.from_numpy(test_prediction)).item()]
-
+        print('{}: done'.format(k))
 
     return metrics_dict, test_prediction, kl_rho,kl_u, exact_sample_u,exact_sample_rho, samples_mean_u,samples_mean_rho
     

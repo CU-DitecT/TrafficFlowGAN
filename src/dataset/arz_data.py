@@ -12,7 +12,7 @@ class arz_data_loader():
         self.N_loop = Loop_number
 
     def load_test(self):
-        return self.Exact_rho, self.Exact_u
+        return self.X_star, self.Exact_rho, self.Exact_u
 
     def load_data(self):
         data = scipy.io.loadmat('data/arz/ARZ_greenshieldSim_epsbell_infer_ring_May14_0.02tau.mat')
@@ -27,7 +27,7 @@ class arz_data_loader():
         X, T = np.meshgrid(x,t) # each is 960 by 241
 
         X_star = np.hstack((X.flatten()[:,None], T.flatten()[:,None])) # hstack is column wise stack, 241*960 (after flatten) by 2
-        self.X_star = X_star
+        self.X_star = X_star.astype(np.float32)
         data2 = np.array([0.0]*960)
         idx2 = np.random.choice(range(960), 750, replace=False) # points on the boundary
         #idx2 = np.array(list(range(960)))# all boundary points are uses for regularization

@@ -109,5 +109,5 @@ class RealNVP_lz(nn.Module):
         miu,sigma = self.NN_z(c)
         z_cali = z*sigma + miu
         # log_p = self.prior.log_prob(z, c)
-        x = self.g(z_cali, c)
+        x = self.g(z_cali, c)        
         return x[:, 0:1], x[:, 1:2]
