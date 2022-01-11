@@ -1,6 +1,6 @@
 from scipy import stats
 import numpy as np
-
+from tqdm import tqdm
 
 def get_kde_curve(data):
     data = data[:,None]
@@ -29,7 +29,7 @@ def get_KL(real_data, sim_data):
     # sim_data: N*M 2-d array. Every row is the predicted distribution of rho
     
     KL = []
-    for i in range(real_data.shape[0]):
+    for i in tqdm(range(real_data.shape[0])):
         X_real, KDE_real = get_kde(real_data[i,:])
         X_sim, KDE_sim = get_kde(sim_data[i,:])
         X_general = np.linspace( min(np.vstack([X_real, X_sim]).flatten()),

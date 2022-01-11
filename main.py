@@ -37,9 +37,10 @@ parser.add_argument('--mode', default='train',
                     help="train, test, or train_and_test")
 parser.add_argument('--n_hidden', default=3)
 parser.add_argument('--noise', default=0.2)
-parser.add_argument('--test_sample', default=3)
-
-
+parser.add_argument('--test_sample', default=3) #100 
+parser.add_argument('--test_rounds', default=2) #3 
+parser.add_argument('--nlpd_use_mean', default='True') 
+parser.add_argument('--nlpd_n_bands', default=1000) 
 parser.add_argument('--force_overwrite', default=False, action='store_true',
                     help="For debug. Force to overwrite")
 
@@ -50,7 +51,7 @@ if __name__ == "__main__":
     json_path = os.path.join(args.experiment_dir, 'experiment_setting.json')
     assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
     params = Params(json_path)
-
+    
     # Safe Overwrite. Avoid to overwrite the previous experiment by mistake.
     force_overwrite = args.force_overwrite
     if force_overwrite is True:
@@ -80,12 +81,20 @@ if __name__ == "__main__":
     # train_feature, train_label = arz_data.load_data()
     if params.data['type'] == 'lwr':
         data_loaded = lwr_data_loader(params.data['loop_number'],params.data['noise_scale'],params.data['noise_number'],params.data['noise_miu'],params.data['noise_sigma'])
+        train_feature, train_label ,train_feature_phy, X,T= data_loaded.load_data()
+        test_feature, Exact_rho = data_loaded.load_test()       
+        test_label=Exact_rho.flatten()[:,None]
+        gaussion_noise = np.random.normal(params.data['noise_miu'],params.data['noise_sigma'],test_label.shape[0]).reshape(-1,1)
+        test_label=  np.concatenate([test_label,gaussion_noise],1)
+        
     elif params.data['type'] == 'arz':
         data_loaded = arz_data_loader(params.data['loop_number'],params.data['noise_scale'],params.data['noise_number'])
-    train_feature, train_label ,X,T= data_loaded.load_data()
-    test_feature= train_feature
-    test_label=  train_label
-    
+        train_feature, train_label ,train_feature_phy, X,T= data_loaded.load_data()
+        test_feature, Exact_rho, Exact_u = data_loaded.load_test()
+        test_label_rho=Exact_rho.flatten()[:,None]
+        test_label_u=Exact_u.flatten()[:,None]
+        test_label= np.concatenate([test_label_rho,test_label_u],1)
+               
     logging.info("load data: " + f"{params.data['type']}")
     logging.info("train feature shape: " + f"{train_feature.shape}")
     logging.info("train label shape: " + f"{train_label.shape}")
@@ -166,7 +175,6 @@ if __name__ == "__main__":
                         z_miu_kwargs,z_sigma_kwargs)
         model.to(device)
 
-
     # create optimizer
     if params.affine_coupling_layers["optimizer"]["type"] == "Adam":
         optimizer = torch.optim.Adam([p for p in model.parameters() if p.requires_grad == True]
@@ -202,7 +210,20 @@ if __name__ == "__main__":
     #
     # restore_from: the directory for the model file.
 
-    if args.mode == "train" or args.mode == "train_and_test":
+    if (args.mode == "train") or (args.mode == "train_and_test"):
+        logging.info("Starting training for {} epoch(s)".format(params.epochs))
+        training(model, optimizer, train_feature, train_label, train_feature_phy,
+                 restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
+                 physics=physics,
+                 physics_optimizer=optimizer_physics,
+                 experiment_dir=args.experiment_dir,
+                 save_frequency=params.save_frequency,
+                 verbose_frequency=params.verbose_frequency,
+                 save_each_epoch=params.save_each_epoch
+                 )
+
+    
+    if args.mode == "train_and_test":
         logging.info("Starting training for {} epoch(s)".format(params.epochs))
         training(model, optimizer, train_feature, train_label,
                  restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
@@ -213,3 +234,25 @@ if __name__ == "__main__":
                  verbose_frequency=params.verbose_frequency,
                  save_each_epoch=params.save_each_epoch
                  )
+
+        restore_from=os.path.join(args.experiment_dir, "weights\last.pth.tar")
+        save_dir=os.path.join(args.experiment_dir, "test_result/")
+        model_alias=args.experiment_dir.split('/')[-1]
+        test_multiple_rounds(model,test_feature,test_label,test_rounds=args.test_rounds,save_dir =save_dir ,model_alias = model_alias,
+                         restore_from=restore_from,metric_functions=metric_fns,n_samples=args.test_sample,noise=args.noise,args=args)
+        print('train_and_test done')
+
+    if args.mode == "test":
+        restore_from=os.path.join(args.experiment_dir, "weights\last.pth.tar")
+        save_dir=os.path.join(args.experiment_dir, "test_result/")
+        model_alias=args.experiment_dir.split('/')[-1]
+        test_multiple_rounds(model,test_feature,test_label,
+                             test_rounds=args.test_rounds,
+                             save_dir =save_dir,
+                             model_alias = model_alias,
+                             restore_from=restore_from,
+                             metric_functions=metric_fns,
+                             n_samples=args.test_sample,
+                             noise=args.noise,
+                             args=args)
+        print('test done')

@@ -83,5 +83,5 @@
     "noise_number":20
   },
   "metrics": ["rmse", "mae", "kl", "nlpd"],
-  "learning_z" :"False"
+  "learning_z":"False"
 }
