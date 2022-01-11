@@ -12,7 +12,8 @@ class lwr_data_loader():
         self.N_loop = Loop_number
         self.miu = noise_miu
         self.sigma = noise_sigma # for generating gaussion noise
-
+    def load_test(self):
+        return self.Exact_rho
     def load_data(self):
         data = scipy.io.loadmat('data/lwr/rho_bellshape_10grid_DS10_gn_eps005_solver2_ring.mat')
 
@@ -48,6 +49,7 @@ class lwr_data_loader():
 
 
         rho_star = Exact_rho.flatten()[:,None] # 960*240 by 1
+        self.Exact_rho = Exact_rho
 
 
         # Doman bounds

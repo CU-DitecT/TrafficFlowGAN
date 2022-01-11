@@ -78,14 +78,14 @@ class RealNVP_lz(nn.Module):
         return z, log_det_J, activation
     
     def NN_z(self, c):
-        c_ = torch.from_numpy(c).to(self.device)
-        miu = self.net_miu[0](c_)
-        sigma = self.net_sigma[0](c_)
+        # c_ = torch.from_numpy(c).to(self.device)
+        miu = self.net_miu[0](c)
+        sigma = self.net_sigma[0](c)
         return miu, sigma
 
     def log_prob(self, x, c):
         z, log_p, activation = self.f(x, c)
-        miu, sigma = self.NN_z(c)
+        miu, sigma = self.NN_z(torch.from_numpy(c).to(self.device))
         L = 0.5*torch.log(torch.Tensor([2*math.pi]))+torch.log(sigma)+torch.div(torch.mul((z-miu),(z-miu)),2*torch.mul(sigma,sigma))
         L = L[:,0:1]+L[:,1:2]
 
@@ -108,7 +108,6 @@ class RealNVP_lz(nn.Module):
         z = torch.squeeze(z)
         miu,sigma = self.NN_z(c)
         z_cali = z*sigma + miu
-        c_ = torch.from_numpy(c).to(self.device)
         # log_p = self.prior.log_prob(z, c)
-        x = self.g(z_cali, c_)
+        x = self.g(z_cali, c)
         return x[:, 0:1], x[:, 1:2]
