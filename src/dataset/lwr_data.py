@@ -13,7 +13,7 @@ class lwr_data_loader():
         self.miu = noise_miu
         self.sigma = noise_sigma # for generating gaussion noise
     def load_test(self):
-        return self.Exact_rho
+        return self.X_star, self.Exact_rho
     def load_data(self):
         data = scipy.io.loadmat('data/lwr/rho_bellshape_10grid_DS10_gn_eps005_solver2_ring.mat')
 
@@ -28,6 +28,7 @@ class lwr_data_loader():
         T_repeat = T.flatten()[:,None].repeat(self.N_noise, axis=1)
         # all points inside
         X_star = np.hstack((X.flatten()[:,None], T.flatten()[:,None])) # hstack is column wise stack, 960*240 by 2
+        self.X_star=X_star.astype(np.float32)
         # index_x = np.where((X.flatten()[:,None] >= 0.4) & (X.flatten()[:,None] <=0.6))
         # index_t = np.where((T.flatten()[:,None] >= 0) & (T.flatten()[:,None] <=0.5))
         # print(index_x[0].shape,index_t[0].shape)

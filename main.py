@@ -37,10 +37,10 @@ parser.add_argument('--mode', default='train',
                     help="train, test, or train_and_test")
 parser.add_argument('--n_hidden', default=3)
 parser.add_argument('--noise', default=0.2)
-parser.add_argument('--test_sample', default=100) 
+parser.add_argument('--test_sample', default=3) #100 
+parser.add_argument('--test_rounds', default=2) #3 
 parser.add_argument('--nlpd_use_mean', default='True') 
 parser.add_argument('--nlpd_n_bands', default=1000) 
-
 parser.add_argument('--force_overwrite', default=False, action='store_true',
                     help="For debug. Force to overwrite")
 
@@ -81,18 +81,20 @@ if __name__ == "__main__":
     # train_feature, train_label = arz_data.load_data()
     if params.data['type'] == 'lwr':
         data_loaded = lwr_data_loader(params.data['loop_number'],params.data['noise_scale'],params.data['noise_number'],params.data['noise_miu'],params.data['noise_sigma'])
-        train_feature, train_label, train_feature_phy, X, T= data_loaded.load_data()
-        Exact_rho = data_loaded.load_test()
-        print('test shape', Exact_rho.shape)
-
+        train_feature, train_label ,train_feature_phy, X,T= data_loaded.load_data()
+        test_feature, Exact_rho = data_loaded.load_test()       
+        test_label=Exact_rho.flatten()[:,None]
+        gaussion_noise = np.random.normal(params.data['noise_miu'],params.data['noise_sigma'],test_label.shape[0]).reshape(-1,1)
+        test_label=  np.concatenate([test_label,gaussion_noise],1)
+        
     elif params.data['type'] == 'arz':
         data_loaded = arz_data_loader(params.data['loop_number'],params.data['noise_scale'],params.data['noise_number'])
-        train_feature, train_label, train_feature_phy, X, T= data_loaded.load_data()
-        Exact_rho, Exact_u = data_loaded.load_test()
-    
-    test_feature= train_feature
-    test_label=  train_label
-    
+        train_feature, train_label ,train_feature_phy, X,T= data_loaded.load_data()
+        test_feature, Exact_rho, Exact_u = data_loaded.load_test()
+        test_label_rho=Exact_rho.flatten()[:,None]
+        test_label_u=Exact_u.flatten()[:,None]
+        test_label= np.concatenate([test_label_rho,test_label_u],1)
+               
     logging.info("load data: " + f"{params.data['type']}")
     logging.info("train feature shape: " + f"{train_feature.shape}")
     logging.info("train label shape: " + f"{train_label.shape}")
@@ -209,6 +211,8 @@ if __name__ == "__main__":
 
     #test(model,test_feature,test_label,   restore_from=restore_from,metric_functions=metric_fns,n_samples=args.test_sample,noise=args.noise,args=args)
     
+    
+    
     if args.mode == "train" :
         logging.info("Starting training for {} epoch(s)".format(params.epochs))
         training(model, optimizer, train_feature, train_label, train_feature_phy,
@@ -236,16 +240,17 @@ if __name__ == "__main__":
         restore_from=os.path.join(args.experiment_dir, "weights\last.pth.tar") 
         save_dir=os.path.join(args.experiment_dir, "test_result/") 
         model_alias=args.experiment_dir.split('/')[-1]    
-        test_multiple_rounds(model,test_feature,test_label,test_rounds=2,save_dir =save_dir ,model_alias = model_alias,
+        test_multiple_rounds(model,test_feature,test_label,test_rounds=args.test_rounds,save_dir =save_dir ,model_alias = model_alias,
                          restore_from=restore_from,metric_functions=metric_fns,n_samples=args.test_sample,noise=args.noise,args=args)
-        print('done')
+        print('train_and_test done')
     
     if args.mode == "test":        
         restore_from=os.path.join(args.experiment_dir, "weights\last.pth.tar") 
         save_dir=os.path.join(args.experiment_dir, "test_result/") 
         model_alias=args.experiment_dir.split('/')[-1]    
-        test_multiple_rounds(model,test_feature,test_label,test_rounds=2,save_dir =save_dir ,model_alias = model_alias,
+        test_multiple_rounds(model,test_feature,test_label,test_rounds=args.test_rounds,save_dir =save_dir ,model_alias = model_alias,
                          restore_from=restore_from,metric_functions=metric_fns,n_samples=args.test_sample,noise=args.noise,args=args)
-        print('done')
+        print('test done')
 
+    
     
