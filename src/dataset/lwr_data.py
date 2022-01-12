@@ -18,8 +18,8 @@ class lwr_data_loader():
         data = scipy.io.loadmat('data/lwr/rho_bellshape_10grid_DS10_gn_eps005_solver2_ring.mat')
 
         t = data['t'].flatten()[:,None]# 960 by 1
-        x = data['x'].flatten()[:,None]# 240 by 1
-        Exact_rho = np.real(data['rho']).T
+        x = data['x'].flatten()[:,None]# 240 by 1; (zm on 01112022: 241 by 1 actually.)
+        Exact_rho = np.real(data['rho']).T # (zm on 01112022: 241 by 1 actually.)
 
 
         X, T = np.meshgrid(x,t) #

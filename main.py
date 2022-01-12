@@ -11,7 +11,7 @@ from src.models.flow import RealNVP
 from src.models.flow_learning_z import RealNVP_lz
 # from src.metrics import instantiate_losses, instantiate_metrics, functionalize_metrics
 from src.utils import set_logger, delete_file_or_folder
-from src.training import training,test,test_multiple_rounds
+from src.training import training, test, test_multiple_rounds
 from src.dataset.arz_data import arz_data_loader
 from src.dataset.lwr_data import lwr_data_loader
 
@@ -29,7 +29,7 @@ else:
     logging.info("cuda is not available")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--experiment_dir', default='experiments/lwr',
+parser.add_argument('--experiment_dir', default='experiments/lwr_learning_z',
                     help="Directory containing experiment_setting.json")
 parser.add_argument('--restore_from', default=None,
                     help="Optional, file location containing weights to reload")
@@ -37,10 +37,10 @@ parser.add_argument('--mode', default='train',
                     help="train, test, or train_and_test")
 parser.add_argument('--n_hidden', default=3)
 parser.add_argument('--noise', default=0.2)
-parser.add_argument('--test_sample', default=3) #100 
-parser.add_argument('--test_rounds', default=2) #3 
-parser.add_argument('--nlpd_use_mean', default='True') 
-parser.add_argument('--nlpd_n_bands', default=1000) 
+parser.add_argument('--test_sample', default=3)  # 100
+parser.add_argument('--test_rounds', default=2)  # 3
+parser.add_argument('--nlpd_use_mean', default='True')
+parser.add_argument('--nlpd_n_bands', default=1000)
 parser.add_argument('--force_overwrite', default=False, action='store_true',
                     help="For debug. Force to overwrite")
 
@@ -51,7 +51,7 @@ if __name__ == "__main__":
     json_path = os.path.join(args.experiment_dir, 'experiment_setting.json')
     assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
     params = Params(json_path)
-    
+
     # Safe Overwrite. Avoid to overwrite the previous experiment by mistake.
     force_overwrite = args.force_overwrite
     if force_overwrite is True:
@@ -80,21 +80,24 @@ if __name__ == "__main__":
     # arz_data = arz_data_loader(params.data_arz['loop_number'],params.data_arz['noise_scale'],params.data_arz['noise_number'])
     # train_feature, train_label = arz_data.load_data()
     if params.data['type'] == 'lwr':
-        data_loaded = lwr_data_loader(params.data['loop_number'],params.data['noise_scale'],params.data['noise_number'],params.data['noise_miu'],params.data['noise_sigma'])
-        train_feature, train_label ,train_feature_phy, X,T= data_loaded.load_data()
-        test_feature, Exact_rho = data_loaded.load_test()       
-        test_label=Exact_rho.flatten()[:,None]
-        gaussion_noise = np.random.normal(params.data['noise_miu'],params.data['noise_sigma'],test_label.shape[0]).reshape(-1,1)
-        test_label=  np.concatenate([test_label,gaussion_noise],1)
-        
+        data_loaded = lwr_data_loader(params.data['loop_number'], params.data['noise_scale'],
+                                      params.data['noise_number'], params.data['noise_miu'], params.data['noise_sigma'])
+        train_feature, train_label, train_feature_phy, X, T = data_loaded.load_data()
+        test_feature, Exact_rho = data_loaded.load_test()
+        test_label = Exact_rho.flatten()[:, None]
+        gaussion_noise = np.random.normal(params.data['noise_miu'], params.data['noise_sigma'],
+                                          test_label.shape[0]).reshape(-1, 1)
+        test_label = np.concatenate([test_label, gaussion_noise], 1)
+
     elif params.data['type'] == 'arz':
-        data_loaded = arz_data_loader(params.data['loop_number'],params.data['noise_scale'],params.data['noise_number'])
-        train_feature, train_label ,train_feature_phy, X,T= data_loaded.load_data()
+        data_loaded = arz_data_loader(params.data['loop_number'], params.data['noise_scale'],
+                                      params.data['noise_number'])
+        train_feature, train_label, train_feature_phy, X, T = data_loaded.load_data()
         test_feature, Exact_rho, Exact_u = data_loaded.load_test()
-        test_label_rho=Exact_rho.flatten()[:,None]
-        test_label_u=Exact_u.flatten()[:,None]
-        test_label= np.concatenate([test_label_rho,test_label_u],1)
-               
+        test_label_rho = Exact_rho.flatten()[:, None]
+        test_label_u = Exact_u.flatten()[:, None]
+        test_label = np.concatenate([test_label_rho, test_label_u], 1)
+
     logging.info("load data: " + f"{params.data['type']}")
     logging.info("train feature shape: " + f"{train_feature.shape}")
     logging.info("train label shape: " + f"{train_label.shape}")
@@ -104,9 +107,9 @@ if __name__ == "__main__":
 
     # create model
     input_dim = params.affine_coupling_layers["z_dim"] + params.affine_coupling_layers["c_dim"]
-    
+
     output_dim = params.affine_coupling_layers["z_dim"]
-    s_args = (input_dim, output_dim, 
+    s_args = (input_dim, output_dim,
               params.affine_coupling_layers["s_net"]["n_hidden"],
               params.affine_coupling_layers["s_net"]["hidden_dim"])
 
@@ -120,7 +123,6 @@ if __name__ == "__main__":
     t_kwargs = {"activation_type": params.affine_coupling_layers["t_net"]["activation_type"],
                 "last_activation_type": params.affine_coupling_layers["t_net"]["last_activation_type"]}
 
-
     # get physics
     if params.physics["type"] == "lwr":
         physics = GaussianLWR(params.physics["meta_params_value"],
@@ -128,7 +130,7 @@ if __name__ == "__main__":
                               params.physics["lower_bounds"],
                               params.physics["upper_bounds"],
                               params.physics["hypers"],
-                              train = (params.physics["train"] == "True"))
+                              train=(params.physics["train"] == "True"))
         physics.to(device)
     elif params.physics["type"] == "none":
         physics = None
@@ -137,11 +139,11 @@ if __name__ == "__main__":
 
     # metric_fns = [instantiate_metrics(i) for i in params.metrics]
     metric_fns = [instantiate_metrics(i) for i in params.metrics]
-    metric_fns=dict(zip(params.metrics, metric_fns))
+    metric_fns = dict(zip(params.metrics, metric_fns))
     if params.learning_z == "False":
-
         model = RealNVP(params.affine_coupling_layers["z_dim"],
                         params.affine_coupling_layers["n_transformation"],
+                        params.affine_coupling_layers["train"],
                         device,
                         s_args,
                         t_args,
@@ -149,30 +151,30 @@ if __name__ == "__main__":
                         t_kwargs)
         model.to(device)
     if params.learning_z == "True":
-
         input_dim_z = params.affine_coupling_layers["c_dim"]
         output_dim_z = params.affine_coupling_layers["z_dim"]
-        z_miu_args = (input_dim_z, output_dim_z, 
-              params.affine_coupling_layers["z_miu_net"]["n_hidden"],
-              params.affine_coupling_layers["z_miu_net"]["hidden_dim"])
+        z_miu_args = (input_dim_z, output_dim_z,
+                      params.affine_coupling_layers["z_miu_net"]["n_hidden"],
+                      params.affine_coupling_layers["z_miu_net"]["hidden_dim"])
 
         z_sigma_args = (input_dim_z, output_dim_z,
-              params.affine_coupling_layers["z_sigma_net"]["n_hidden"],
-              params.affine_coupling_layers["z_sigma_net"]["hidden_dim"])
+                        params.affine_coupling_layers["z_sigma_net"]["n_hidden"],
+                        params.affine_coupling_layers["z_sigma_net"]["hidden_dim"])
         z_miu_kwargs = {"activation_type": params.affine_coupling_layers["z_miu_net"]["activation_type"],
-                "last_activation_type": params.affine_coupling_layers["z_miu_net"]["last_activation_type"]}
+                        "last_activation_type": params.affine_coupling_layers["z_miu_net"]["last_activation_type"]}
 
         z_sigma_kwargs = {"activation_type": params.affine_coupling_layers["z_sigma_net"]["activation_type"],
-                "last_activation_type": params.affine_coupling_layers["z_sigma_net"]["last_activation_type"]}
+                          "last_activation_type": params.affine_coupling_layers["z_sigma_net"]["last_activation_type"]}
         model = RealNVP_lz(params.affine_coupling_layers["z_dim"],
-                        params.affine_coupling_layers["n_transformation"],
-                        device,
-                        s_args,
-                        t_args,
-                        s_kwargs,
-                        t_kwargs,
-                        z_miu_args,z_sigma_args,
-                        z_miu_kwargs,z_sigma_kwargs)
+                           params.affine_coupling_layers["n_transformation"],
+                           params.affine_coupling_layers["train"],
+                           device,
+                           s_args,
+                           t_args,
+                           s_kwargs,
+                           t_kwargs,
+                           z_miu_args, z_sigma_args,
+                           z_miu_kwargs, z_sigma_kwargs)
         model.to(device)
 
     # create optimizer
@@ -182,10 +184,14 @@ if __name__ == "__main__":
     else:
         raise ValueError("optimizer not in searching domain.")
 
-    if params.physics["optimizer"]["type"] == "Adam":
-        optimizer_physics = torch.optim.Adam([p for p in physics.torch_meta_params.values() if p.requires_grad == True]
-                                     , **params.physics["optimizer"]["kwargs"])
-    elif params.physics["optimizer"]["type"] == "none":
+    if physics is not None:
+        if params.physics["optimizer"]["type"] == "Adam":
+            optimizer_physics = torch.optim.Adam(
+                [p for p in physics.torch_meta_params.values() if p.requires_grad == True]
+                , **params.physics["optimizer"]["kwargs"])
+        elif params.physics["optimizer"]["type"] == "none":
+            optimizer_physics = None
+    else:
         optimizer_physics = None
 
     ##########################################
@@ -222,7 +228,6 @@ if __name__ == "__main__":
                  save_each_epoch=params.save_each_epoch
                  )
 
-    
     if args.mode == "train_and_test":
         logging.info("Starting training for {} epoch(s)".format(params.epochs))
         training(model, optimizer, train_feature, train_label,
@@ -235,21 +240,23 @@ if __name__ == "__main__":
                  save_each_epoch=params.save_each_epoch
                  )
 
-        restore_from=os.path.join(args.experiment_dir, "weights\last.pth.tar")
-        save_dir=os.path.join(args.experiment_dir, "test_result/")
-        model_alias=args.experiment_dir.split('/')[-1]
-        test_multiple_rounds(model,test_feature,test_label,test_rounds=args.test_rounds,save_dir =save_dir ,model_alias = model_alias,
-                         restore_from=restore_from,metric_functions=metric_fns,n_samples=args.test_sample,noise=args.noise,args=args)
+        restore_from = os.path.join(args.experiment_dir, "weights\last.pth.tar")
+        save_dir = os.path.join(args.experiment_dir, "test_result/")
+        model_alias = args.experiment_dir.split('/')[-1]
+        test_multiple_rounds(model, test_feature, test_label, test_rounds=args.test_rounds, save_dir=save_dir,
+                             model_alias=model_alias,
+                             restore_from=restore_from, metric_functions=metric_fns, n_samples=args.test_sample,
+                             noise=args.noise, args=args)
         print('train_and_test done')
 
     if args.mode == "test":
-        restore_from=os.path.join(args.experiment_dir, "weights\last.pth.tar")
-        save_dir=os.path.join(args.experiment_dir, "test_result/")
-        model_alias=args.experiment_dir.split('/')[-1]
-        test_multiple_rounds(model,test_feature,test_label,
+        restore_from = os.path.join(args.experiment_dir, "weights\last.pth.tar")
+        save_dir = os.path.join(args.experiment_dir, "test_result/")
+        model_alias = args.experiment_dir.split('/')[-1]
+        test_multiple_rounds(model, test_feature, test_label,
                              test_rounds=args.test_rounds,
-                             save_dir =save_dir,
-                             model_alias = model_alias,
+                             save_dir=save_dir,
+                             model_alias=model_alias,
                              restore_from=restore_from,
                              metric_functions=metric_fns,
                              n_samples=args.test_sample,

@@ -15,7 +15,7 @@ def get_mask(z_dim, n_transformation):
 
 
 class RealNVP(nn.Module):
-    def __init__(self, z_dim, n_transformation, device, s_args, t_args, s_kwargs, t_kwargs):
+    def __init__(self, z_dim, n_transformation, train, device, s_args, t_args, s_kwargs, t_kwargs):
         super(RealNVP, self).__init__()
         mask = get_mask(z_dim, n_transformation)
         mask_torch = torch.from_numpy(mask)
@@ -30,6 +30,7 @@ class RealNVP(nn.Module):
         self.t = torch.nn.ModuleList(t)
         self.s = torch.nn.ModuleList(s)
         self.prior = torch.distributions.MultivariateNormal(torch.zeros(z_dim), torch.eye(z_dim)*0.05)
+        self.train = (train == "True")
 
     def g(self, z, c):
         # transform from z to x

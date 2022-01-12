@@ -23,6 +23,7 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
              experiment_dir=None,
              save_frequency=1,
              verbose_frequency=1,
+             verbose_computation_time=0,
              save_each_epoch="False"):
     # Initialize tf.Saver instances to save weights during metrics_factory
     X_train = train_feature
@@ -71,52 +72,59 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
             start_time = time.time()
             loss, activation = model.log_prob(y_batch, x_batch)
             loss = -loss.mean()
+            data_loss = loss
             loss_data_time = time.time()-start_time
             optimizer.zero_grad()
 
-            if (physics is not None) | (physics.train == "False"):
-                physics_optimizer.zero_grad()
+            if physics is not None:
+                if physics.train == "True":
+                    physics_optimizer.zero_grad()
 
             # get physics_loss
             if physics is not None:
                 start_time = time.time()
-                phy_loss, physics_params = physics.get_residuals(model, x_batch_phy)
+                phy_loss, physics_params, grad_hist = physics.get_residuals(model, x_batch_phy)
+                phy_loss = phy_loss.mean()
                 loss_phy_time = time.time() - start_time
-
+                print(physics_params["tau"])
                 loss = loss * physics.hypers["alpha"]
-                loss += (1 - physics.hypers["alpha"]) * phy_loss.mean()
+                loss += (1 - physics.hypers["alpha"]) * phy_loss
 
             start_time = time.time()
+
             loss.backward(retain_graph=True)
             backward_all_time = time.time() - start_time
 
             start_time = time.time()
-            optimizer.step()
+            if model.train is True:
+                optimizer.step()
             step_data_time = time.time() - start_time
 
+            start_time = time.time()
+            if physics is not None:
+                if physics.train is True:
+                    physics_optimizer.step()
+            step_phy_time = time.time() - start_time
 
-            if (physics is not None) | (physics.train == "True"):
-                start_time = time.time()
-                physics_optimizer.step()
-                step_phy_time = time.time() - start_time
-
-
-            print(f"step = {epoch*num_steps + step:d}")
-            print(f"loss_data_time: {loss_data_time:.5f}")
-            print(f"loss_phys_time: {loss_phy_time:.5f}")
-            print(f"backward_all_time: {backward_all_time:.5f}")
-            print(f"step_data_time: {step_data_time:.5f}")
-            print(f"step_phy_time: {step_phy_time:.5f}")
+            if verbose_computation_time == 1:
+                print(f"step = {epoch*num_steps + step:d}")
+                print(f"loss_data_time: {loss_data_time:.5f}")
+                print(f"loss_phys_time: {loss_phy_time:.5f}")
+                print(f"backward_all_time: {backward_all_time:.5f}")
+                print(f"step_data_time: {step_data_time:.5f}")
+                print(f"step_phy_time: {step_phy_time:.5f}")
             # evaluation
             activation_eval = model.eval(x_batch)
-            a = activation_eval["x1_eval"].detach().cpu().numpy()
-            idx = np.argsort(a)[-1]
+
+            # below is for debug
+            # a = activation_eval["x1_eval"].detach().cpu().numpy()
+            # idx = np.argsort(a)[-1]
             # 4947
-            a = 1
-            if physics is not None:
-                # write the physics_params
-                for k, v in physics_params.items():
-                    writer.add_scalar(f"physics_params/{k:s}", v.mean(), epoch*num_steps + step)
+            # a = 1
+
+            # below is to force the iteration # for each epoch to be 1.
+            break
+
 
         # logging
         if verbose_frequency > 0:
@@ -148,12 +156,26 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
 
             # save loss to tensorboard
             writer.add_scalar("loss/train", loss, epoch+1)
+            writer.add_scalar("loss/train_data_loss", data_loss, epoch+1)
+            if physics is not None:
+                writer.add_scalar("loss/train_phy_loss", phy_loss, epoch+1)
 
             # save activation to tensorboard
             for k, v in activation.items():
                 writer.add_histogram(f"activation_train/{k:s}", v, epoch+1)
             for k, v in activation_eval.items():
                 writer.add_histogram(f"activation_eval/{k:s}", v, epoch+1)
+            if physics is not None:
+                # write the physics_params
+                for k, v in physics_params.items():
+                    writer.add_scalar(f"physics_params/{k:s}", v.mean(), epoch * num_steps + step)
+
+                # write the hist of the gradient
+                for k, v in grad_hist.items():
+                    writer.add_histogram(f"grad/{k:s}", v, epoch+1)
+
+                for k, v in physics.torch_meta_params.items():
+                    writer.add_scalar(f"physics_grad/dLoss_d{k:s}", v.mean(), epoch + 1)
 
 
 def test(model, test_feature, test_target,

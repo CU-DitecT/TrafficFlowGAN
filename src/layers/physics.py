@@ -8,7 +8,13 @@ class GaussianLWR(torch.nn.Module):
 
         self.torch_meta_params = dict()
         for k, v in meta_params_value.items():
-            self.torch_meta_params[k] = torch.nn.Parameter(torch.tensor(v, dtype=torch.float32), requires_grad=(meta_params_trainable[k] == "True"))
+            if meta_params_trainable[k] == "True":
+                self.torch_meta_params[k] = torch.nn.Parameter(torch.tensor(v, dtype=torch.float32), requires_grad=True,
+                                                               )
+                self.torch_meta_params[k].retain_grad()
+            else:
+                self.torch_meta_params[k] = torch.nn.Parameter(torch.tensor(v, dtype=torch.float32), requires_grad=False,
+                                                               )
 
         self.lower_bounds = lower_bounds
         self.upper_bounds = upper_bounds
@@ -28,7 +34,7 @@ class GaussianLWR(torch.nn.Module):
         start_time = time.time()
         drho_dt = torch.autograd.grad(rho, t, torch.ones([t.shape[0], 1]).to(model.device),
                                       retain_graph=True, create_graph=True)[0]
-        print(f"one autograd time: {time.time() - start_time:.5f}")
+        # print(f"one autograd time: {time.time() - start_time:.5f}")
         drho_dx = torch.autograd.grad(rho, x, torch.ones([x.shape[0], 1]).to(model.device),
                                       retain_graph=True, create_graph=True)[0]
         drho_dxx = torch.autograd.grad(drho_dx, x, torch.ones([x.shape[0], 1]).to(model.device),
@@ -43,11 +49,19 @@ class GaussianLWR(torch.nn.Module):
                                       retain_graph=True, create_graph=True)[0]
 
         r = drho_dt + eq_2 - torch_params["tau"] * drho_dxx
-        r = r.reshape(-1, self.hypers["n_repeat"])
+        #r = r.reshape(-1, self.hypers["n_repeat"])
+        r = r.reshape(self.hypers["n_repeat"], -1).T
 
-        r = torch.mean(r, dim=1)
+        r_mean = torch.square(torch.mean(r, dim=1))
 
-        return r, torch_params
+        gradient_hist = {"rho": rho,
+                         "rho_dot_drhodx": rho * drho_dx,
+                         "drho_dt": drho_dt,
+                         "drho_dx": drho_dx,
+                         "dq_dx": eq_2,
+                         "f1": r}
+
+        return r_mean, torch_params, gradient_hist
 
     def sample_params(self, torch_meta_params, batch_size):
         meta_pairs = [("mu_rhomax", "sigma_rhomax"),
@@ -60,10 +74,10 @@ class GaussianLWR(torch.nn.Module):
             param_key = mu_key.split("_")[1]
             z = self.randn.sample(sample_shape=(1, n_repeat))[0]
             z = torch.repeat_interleave(z, batch_size, dim=0)
-            torch_params[param_key] = torch_meta_params[mu_key] + \
-                                      torch_meta_params[sigma_key] * z
-            torch_params[param_key] = torch.clamp(torch_params[param_key], self.lower_bounds[mu_key],
-                                                    self.upper_bounds[mu_key])
+            torch_params[param_key] = torch_meta_params[mu_key] # + torch_meta_params[sigma_key] * z
+            torch_params[param_key].retain_grad()
+            #torch_params[param_key] = torch.clamp(torch_params[param_key], self.lower_bounds[mu_key],
+            #                                        self.upper_bounds[mu_key])
         return torch_params
 
 
