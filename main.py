@@ -16,10 +16,11 @@ from src.dataset.arz_data import arz_data_loader
 from src.dataset.lwr_data import lwr_data_loader
 
 from src.layers.physics import GaussianLWR
+from src.layers.physics import GaussianARZ
 
 from src.metrics import instantiate_losses, instantiate_metrics, functionalize_metrics
 
-# CUDA support 
+#CUDA support
 if torch.cuda.is_available():
     device = torch.device('cuda:0')
     torch.set_default_tensor_type('torch.cuda.FloatTensor')
@@ -29,9 +30,9 @@ else:
     logging.info("cuda is not available")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--experiment_dir', default='experiments/lwr_learning_z',
+parser.add_argument('--experiment_dir', default='experiments/arz_learning_z',
                     help="Directory containing experiment_setting.json")
-parser.add_argument('--restore_from', default=None,
+parser.add_argument('--restore_from', default= None, #"experiments/lwr_learning_z/weights/last.pth.tar",
                     help="Optional, file location containing weights to reload")
 parser.add_argument('--mode', default='train',
                     help="train, test, or train_and_test")
@@ -55,7 +56,7 @@ if __name__ == "__main__":
     # Safe Overwrite. Avoid to overwrite the previous experiment by mistake.
     force_overwrite = args.force_overwrite
     if force_overwrite is True:
-        safe_files = ["experiment_setting.json"]
+        safe_files = ["experiment_setting.json", "safe_folder"]
         if args.restore_from is not None:
             safe_files.append(os.path.split(args.restore_from)[-2])
 
@@ -126,6 +127,14 @@ if __name__ == "__main__":
     # get physics
     if params.physics["type"] == "lwr":
         physics = GaussianLWR(params.physics["meta_params_value"],
+                              params.physics["meta_params_trainable"],
+                              params.physics["lower_bounds"],
+                              params.physics["upper_bounds"],
+                              params.physics["hypers"],
+                              train=(params.physics["train"] == "True"))
+        physics.to(device)
+    elif params.physics["type"] == "arz":
+        physics = GaussianARZ(params.physics["meta_params_value"],
                               params.physics["meta_params_trainable"],
                               params.physics["lower_bounds"],
                               params.physics["upper_bounds"],
