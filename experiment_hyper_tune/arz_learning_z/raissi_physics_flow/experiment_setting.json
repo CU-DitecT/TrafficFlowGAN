@@ -39,7 +39,7 @@
   "physics":
   {
     "type": "arz",
-    "train": "True",
+    "train": "False",
     "loss_fn": "raissi",
     "hypers": {"alpha": 0.5,
                 "n_repeat": 10,
@@ -52,9 +52,9 @@
       }
     },
     "meta_params_value": {
-            "mu_rhomax":0.5,
-            "mu_umax": 0.3,
-            "mu_tau": 0.3,
+            "mu_rhomax":1.13,
+            "mu_umax": 1.02,
+            "mu_tau": 0.02,
             "sigma_rhomax": 0,
             "sigma_umax": 0,
             "sigma_tau": 0

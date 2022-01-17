@@ -42,7 +42,7 @@
     "train": "False",
     "loss_fn": "raissi",
     "hypers": {"alpha": 0.5,
-                "n_repeat": 1,
+                "n_repeat": 10,
                 "alpha_u_rho": 0.5
     },
     "optimizer": {
