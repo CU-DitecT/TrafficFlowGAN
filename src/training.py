@@ -65,6 +65,7 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
         # train step
         num_steps = X_train.shape[0] // batch_size
         batch_size_phy = X_train_phy.shape[0] // num_steps
+        # batch_size_phy = 10000
         for step in range(num_steps):
             x_batch = X_train[step * batch_size:(step + 1) * batch_size, :]
             y_batch = y_train[step * batch_size:(step + 1) * batch_size, :]
@@ -77,7 +78,7 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
             optimizer.zero_grad()
 
             if physics is not None:
-                if physics.train == "True":
+                if physics.train is True:
                     physics_optimizer.zero_grad()
 
             # get physics_loss
@@ -86,7 +87,7 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
                 phy_loss, physics_params, grad_hist = physics.get_residuals(model, x_batch_phy)
                 phy_loss = phy_loss.mean()
                 loss_phy_time = time.time() - start_time
-                print(physics_params["tau"])
+                # print(physics_params["tau"])
                 loss = loss * physics.hypers["alpha"]
                 loss += (1 - physics.hypers["alpha"]) * phy_loss
 
@@ -123,7 +124,7 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
             # a = 1
 
             # below is to force the iteration # for each epoch to be 1.
-            break
+            # break
 
 
         # logging
@@ -168,6 +169,8 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
             if physics is not None:
                 # write the physics_params
                 for k, v in physics_params.items():
+                    if k=='tau':
+                        v = v/50.0
                     writer.add_scalar(f"physics_params/{k:s}", v.mean(), epoch * num_steps + step)
 
                 # write the hist of the gradient
@@ -175,7 +178,8 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
                     writer.add_histogram(f"grad/{k:s}", v, epoch+1)
 
                 for k, v in physics.torch_meta_params.items():
-                    writer.add_scalar(f"physics_grad/dLoss_d{k:s}", v.mean(), epoch + 1)
+                    if physics.meta_params_trainable[k] == "True":
+                        writer.add_scalar(f"physics_grad/dLoss_d{k:s}", v.grad, epoch + 1)
 
 
 def test(model, test_feature, test_target,
