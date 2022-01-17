@@ -55,7 +55,7 @@ if __name__ == "__main__":
     # Safe Overwrite. Avoid to overwrite the previous experiment by mistake.
     force_overwrite = args.force_overwrite
     if force_overwrite is True:
-        safe_files = ["experiment_setting.json"]
+        safe_files = ["experiment_setting.json", "safe_folder"]
         if args.restore_from is not None:
             safe_files.append(os.path.split(args.restore_from)[-2])
 
@@ -189,6 +189,10 @@ if __name__ == "__main__":
             optimizer_physics = torch.optim.Adam(
                 [p for p in physics.torch_meta_params.values() if p.requires_grad == True]
                 , **params.physics["optimizer"]["kwargs"])
+        elif params.physics["optimizer"]["type"] == "SGD":
+            optimizer_physics = torch.optim.SGD(
+                [p for p in physics.torch_meta_params.values() if p.requires_grad == True]
+                , **params.physics["optimizer"]["kwargs"])
         elif params.physics["optimizer"]["type"] == "none":
             optimizer_physics = None
     else:
@@ -225,7 +229,8 @@ if __name__ == "__main__":
                  experiment_dir=args.experiment_dir,
                  save_frequency=params.save_frequency,
                  verbose_frequency=params.verbose_frequency,
-                 save_each_epoch=params.save_each_epoch
+                 save_each_epoch=params.save_each_epoch,
+                 verbose_computation_time = params.verbose_computation_time
                  )
 
     if args.mode == "train_and_test":
@@ -237,7 +242,8 @@ if __name__ == "__main__":
                  experiment_dir=args.experiment_dir,
                  save_frequency=params.save_frequency,
                  verbose_frequency=params.verbose_frequency,
-                 save_each_epoch=params.save_each_epoch
+                 save_each_epoch=params.save_each_epoch,
+                 verbose_computation_time=params.verbose_computation_time
                  )
 
         restore_from = os.path.join(args.experiment_dir, "weights\last.pth.tar")

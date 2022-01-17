@@ -39,6 +39,7 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
         # restore model
         begin_at_epoch = utils.load_checkpoint(restore_from, model, optimizer, begin_at_epoch)
         logging.info(f"Restoring parameters from {restore_from}, restored epoch is {begin_at_epoch:d}")
+    begin_at_epoch = 0
 
     best_loss = 10000
     best_last_train_loss = {"best":
@@ -77,7 +78,7 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
             optimizer.zero_grad()
 
             if physics is not None:
-                if physics.train == "True":
+                if physics.train is True:
                     physics_optimizer.zero_grad()
 
             # get physics_loss
@@ -86,7 +87,7 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
                 phy_loss, physics_params, grad_hist = physics.get_residuals(model, x_batch_phy)
                 phy_loss = phy_loss.mean()
                 loss_phy_time = time.time() - start_time
-                print(physics_params["tau"])
+                # print(physics_params["tau"])
                 loss = loss * physics.hypers["alpha"]
                 loss += (1 - physics.hypers["alpha"]) * phy_loss
 
@@ -104,6 +105,7 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
             if physics is not None:
                 if physics.train is True:
                     physics_optimizer.step()
+                    #pass
             step_phy_time = time.time() - start_time
 
             if verbose_computation_time == 1:
@@ -168,14 +170,15 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
             if physics is not None:
                 # write the physics_params
                 for k, v in physics_params.items():
-                    writer.add_scalar(f"physics_params/{k:s}", v.mean(), epoch * num_steps + step)
+                    writer.add_scalar(f"physics_params/{k:s}", v.mean(), epoch+1)
 
-                # write the hist of the gradient
+                # write the hist of the gradient w.r.t x and t
                 for k, v in grad_hist.items():
                     writer.add_histogram(f"grad/{k:s}", v, epoch+1)
 
                 for k, v in physics.torch_meta_params.items():
-                    writer.add_scalar(f"physics_grad/dLoss_d{k:s}", v.mean(), epoch + 1)
+                    if physics.meta_params_trainable[k] == "True":
+                        writer.add_scalar(f"physics_grad/dLoss_d{k:s}", v.grad, epoch + 1)
 
 
 def test(model, test_feature, test_target,
