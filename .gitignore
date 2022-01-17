@@ -2,13 +2,19 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+*.npy
+*.png
 # C extensions
 *.so
 
 # Distribution / packaging
 .Python
 experiments/
+experiment_hyper_tune/
+!experiment_hyper_tune/arz_learning_z/flow/experiment_setting.json
+!experiment_hyper_tune/arz_learning_z/flow/tuning_params.json
+!experiment_hyper_tune/arz_learning_z/raissi_physics_flow/experiment_setting.json
+!experiment_hyper_tune/arz_learning_z/raissi_physics_flow/tuning_params.json
 !experiments/arz/experiment_setting.json
 !experiments/arz_learning_z/experiment_setting.json
 !experiments/lwr/experiment_setting.json
