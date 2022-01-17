@@ -298,7 +298,7 @@ def test(model, test_feature, test_target,
 
 #test(model,test_feature,test_label,   restore_from=restore_from,metric_functions=metric_fns,n_samples=args.test_sample,noise=args.noise,params=params)
 
-def test_multiple_rounds(model, test_feature,test_label, test_rounds=3,
+def test_multiple_rounds(model, test_feature,test_label, test_rounds=1,
                          save_dir = None,
                          model_alias = None,                        
                 **kwargs):
