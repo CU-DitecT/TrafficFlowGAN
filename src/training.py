@@ -68,12 +68,14 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
         # train step
         num_steps = X_train.shape[0] // batch_size
         # batch_size_phy = X_train_phy.shape[0] // num_steps
-        # batch_size_phy = 10000
-        batch_size_phy = 500
+        batch_size_phy = batch_size
         for step in range(num_steps):
             x_batch = X_train[step * batch_size:(step + 1) * batch_size, :]
             y_batch = y_train[step * batch_size:(step + 1) * batch_size, :]
-            x_batch_phy = X_train_phy[step * batch_size_phy:(step + 1) * batch_size_phy, :]
+
+            # random sample X_train_phy
+            random_idx = np.random.choice(X_train_phy.shape[0], batch_size_phy, replace=False)
+            x_batch_phy = X_train_phy[random_idx, :]
             start_time = time.time()
             loss, activation = model.log_prob(y_batch, x_batch)
             loss = -loss.mean()
@@ -83,8 +85,7 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
             optimizer.zero_grad()
 
             if physics is not None:
-                if physics.train is True:
-                    physics_optimizer.zero_grad()
+                physics_optimizer.zero_grad()
 
             # get physics_loss
             if physics is not None:
@@ -177,7 +178,7 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
                 writer.add_scalar("loss/train_phy_loss", phy_loss_np, epoch+1)
 
             # save activation to tensorboard
-            for k, v in activation.items():
+            for k, v in physics_params.items():
                 writer.add_histogram(f"activation_train/{k:s}", v, epoch+1)
             for k, v in activation_eval.items():
                 writer.add_histogram(f"activation_eval/{k:s}", v, epoch+1)
@@ -199,7 +200,7 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
 
 
     # plot the abnormal training data loss
-    if np.sum( np.where(np.array(Data_loss) > 0) ) > 10:
+    if np.sum( np.where(np.array(Data_loss) > 0) ) > 10*num_steps:
         plt.plot(np.arange(len(Data_loss)), Data_loss)
         plt.xlabel("epoch")
         plt.ylabel("train loss")
