@@ -99,8 +99,8 @@ class RealNVP_lz(nn.Module):
         c_ = torch.from_numpy(c).to(self.device)
         # log_p = self.prior.log_prob(z, c)
         x = self.g(z, c_)
-        activation = {"x1_eval": x[:, 0],
-                      "x2_eval": x[:, 1]}
+        activation = {"x1_eval": x[:, 0].cpu().detach().numpy(),
+                      "x2_eval": x[:, 1].cpu().detach().numpy()}
         return activation
 
     def test(self, c):

@@ -21,13 +21,13 @@ from src.layers.physics import GaussianARZ
 from src.metrics import instantiate_losses, instantiate_metrics, functionalize_metrics
 
 #CUDA support
-# if torch.cuda.is_available():
-#     device = torch.device('cuda:0')
-#     torch.set_default_tensor_type('torch.cuda.FloatTensor')
-#     logging.info("Enable cuda")
-# else:
-device = torch.device('cpu')
-logging.info("cuda is not available")
+if torch.cuda.is_available():
+    device = torch.device('cuda:0')
+    torch.set_default_tensor_type('torch.cuda.FloatTensor')
+    logging.info("Enable cuda")
+else:
+    device = torch.device('cpu')
+    logging.info("cuda is not available")
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--experiment_dir', default='experiments/arz_learning_z',

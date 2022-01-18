@@ -72,12 +72,15 @@ class GaussianLWR(torch.nn.Module):
         #     np.save(f,r_out)
 
 
-        gradient_hist = {"rho": rho,
-                         "rho_dot_drhodx": rho * drho_dx,
-                         "drho_dt": drho_dt,
-                         "drho_dx": drho_dx,
-                         "dq_dx": eq_2,
-                         "f1": r}
+        gradient_hist = {"rho": rho.cpu().detach().numpy(),
+                         "rho_dot_drhodx": (rho * drho_dx).cpu().detach().numpy(),
+                         "drho_dt": drho_dt.cpu().detach().numpy(),
+                         "drho_dx": drho_dx.cpu().detach().numpy(),
+                         "dq_dx": eq_2.cpu().detach().numpy(),
+                         "f1": r.cpu().detach().numpy()}
+
+        for k in torch_params.keys():
+            torch_params[k] = torch_params[k].cpu().detach().numpy()
 
         return r_mean, torch_params, gradient_hist
 
