@@ -77,6 +77,7 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
             loss, activation = model.log_prob(y_batch, x_batch)
             loss = -loss.mean()
             data_loss = loss
+            data_loss_np = data_loss.cpu().detach().numpy()
             loss_data_time = time.time()-start_time
             optimizer.zero_grad()
 
@@ -93,6 +94,7 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
                 # print(physics_params["tau"])
                 loss = loss * physics.hypers["alpha"]
                 loss += (1 - physics.hypers["alpha"]) * phy_loss
+                phy_loss_np = phy_loss.cpu().detach().numpy()
 
             start_time = time.time()
 
@@ -122,7 +124,12 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
             activation_eval = model.eval(x_batch)
 
             # save the data loss
-            Data_loss.append(data_loss)
+            Data_loss.append(data_loss.cpu().detach().numpy())
+
+            # delete the output tensor
+            del([data_loss, loss])
+            if physics is not None:
+                del(phy_loss)
 
             # below is for debug
             # a = activation_eval["x1_eval"].detach().cpu().numpy()
@@ -137,11 +144,11 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
         # logging
         if verbose_frequency > 0:
             if epoch % verbose_frequency == 0:
-                logging.info(f"Epoch {epoch + 1}/{epochs}    loss={loss:.3f}")
+                logging.info(f"Epoch {epoch + 1}/{epochs}    loss={Data_loss[-1]:.3f}")
 
         # saving at every "save_frequency" or at the last epoch
         if (epoch % save_frequency == 0) | (epoch == begin_at_epoch + epochs - 1):
-            is_best = loss < best_loss
+            is_best = Data_loss[-1] < best_loss
             utils.save_checkpoint({'epoch': epoch + 1,
                                    'state_dict': model.state_dict(),
                                    'optim_dict': optimizer.state_dict()},
@@ -151,22 +158,22 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
 
             # if best loss, update the "best_last_train_loss"
             if is_best:
-                best_loss = loss
+                best_loss = Data_loss[-1]
                 best_last_train_loss["best"]["loss"] = best_loss
                 best_last_train_loss["best"]["epoch"] = epoch+1
 
             # update and save the latest "best_last_train_loss"
-            best_last_train_loss["last"]["loss"] = loss
+            best_last_train_loss["last"]["loss"] = Data_loss[-1]
             best_last_train_loss["last"]["epoch"] = epoch+1
 
             save_path = os.path.join(experiment_dir, "best_last_train_loss.json")
             save_dict_to_json(best_last_train_loss, save_path)
 
             # save loss to tensorboard
-            writer.add_scalar("loss/train", loss, epoch+1)
-            writer.add_scalar("loss/train_data_loss", data_loss, epoch+1)
+            writer.add_scalar("loss/train", Data_loss[-1], epoch+1)
+            writer.add_scalar("loss/train_data_loss", data_loss_np, epoch+1)
             if physics is not None:
-                writer.add_scalar("loss/train_phy_loss", phy_loss, epoch+1)
+                writer.add_scalar("loss/train_phy_loss", phy_loss_np, epoch+1)
 
             # save activation to tensorboard
             for k, v in activation.items():
@@ -176,7 +183,6 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
             if physics is not None:
                 # write the physics_params
                 for k, v in physics_params.items():
-
                     if k=='tau':
                         v = v/50.0
                     writer.add_scalar(f"physics_params/{k:s}", v.mean(), epoch * num_steps + step)

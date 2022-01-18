@@ -80,7 +80,7 @@ while flag == 0:
         experiment_dir, N = check_exist_and_add_suffix(experiment_dir, suffix, N=N)
         if N > Max_round:
             flag = 1
-            break
+            continue
 
         initialize_experiment(experiment_dir, params)
         cmd = f"python main.py --experiment_dir {experiment_dir} --mode train"
