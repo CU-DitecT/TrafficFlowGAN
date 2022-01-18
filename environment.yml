@@ -12,3 +12,4 @@ dependencies:
     - matplotlib
     - tqdm
     - matplotlib
+    - pyDOE

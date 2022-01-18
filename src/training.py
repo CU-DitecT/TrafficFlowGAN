@@ -67,8 +67,9 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
 
         # train step
         num_steps = X_train.shape[0] // batch_size
-        batch_size_phy = X_train_phy.shape[0] // num_steps
+        # batch_size_phy = X_train_phy.shape[0] // num_steps
         # batch_size_phy = 10000
+        batch_size_phy = 500
         for step in range(num_steps):
             x_batch = X_train[step * batch_size:(step + 1) * batch_size, :]
             y_batch = y_train[step * batch_size:(step + 1) * batch_size, :]
