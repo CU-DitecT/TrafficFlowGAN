@@ -3,6 +3,7 @@ import numpy as np
 import os
 import src.utils as utils
 
+import matplotlib.pyplot as plt
 import logging
 import os
 from src.utils import save_dict_to_json, check_exist_and_create, check_and_make_dir
@@ -39,6 +40,7 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
         # restore model
         begin_at_epoch = utils.load_checkpoint(restore_from, model, optimizer, begin_at_epoch)
         logging.info(f"Restoring parameters from {restore_from}, restored epoch is {begin_at_epoch:d}")
+    begin_at_epoch = 0
 
     best_loss = 10000
     best_last_train_loss = {"best":
@@ -48,6 +50,7 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
                                 {"loss": 100,
                                  "epoch": 0},
                             }
+    Data_loss = []
     for epoch in range(begin_at_epoch, epochs):
         # shuffle the data
         np.random.seed(1)
@@ -105,6 +108,7 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
             if physics is not None:
                 if physics.train is True:
                     physics_optimizer.step()
+                    #pass
             step_phy_time = time.time() - start_time
 
             if verbose_computation_time == 1:
@@ -116,6 +120,9 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
                 print(f"step_phy_time: {step_phy_time:.5f}")
             # evaluation
             activation_eval = model.eval(x_batch)
+
+            # save the data loss
+            Data_loss.append(data_loss)
 
             # below is for debug
             # a = activation_eval["x1_eval"].detach().cpu().numpy()
@@ -169,17 +176,28 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
             if physics is not None:
                 # write the physics_params
                 for k, v in physics_params.items():
+
                     if k=='tau':
                         v = v/50.0
                     writer.add_scalar(f"physics_params/{k:s}", v.mean(), epoch * num_steps + step)
 
-                # write the hist of the gradient
+
+                # write the hist of the gradient w.r.t x and t
                 for k, v in grad_hist.items():
                     writer.add_histogram(f"grad/{k:s}", v, epoch+1)
 
                 for k, v in physics.torch_meta_params.items():
                     if physics.meta_params_trainable[k] == "True":
                         writer.add_scalar(f"physics_grad/dLoss_d{k:s}", v.grad, epoch + 1)
+
+
+    # plot the abnormal training data loss
+    if np.sum( np.where(np.array(Data_loss) > 0) ) > 10:
+        plt.plot(np.arange(len(Data_loss)), Data_loss)
+        plt.xlabel("epoch")
+        plt.ylabel("train loss")
+        plt.savefig(os.path.join(experiment_dir,"abnormal_train_data_loss.png"))
+
 
 
 def test(model, test_feature, test_target,

@@ -34,7 +34,7 @@ parser.add_argument('--experiment_dir', default='experiments/arz_learning_z',
                     help="Directory containing experiment_setting.json")
 parser.add_argument('--restore_from', default= None, #"experiments/lwr_learning_z/weights/last.pth.tar",
                     help="Optional, file location containing weights to reload")
-parser.add_argument('--mode', default='test',
+parser.add_argument('--mode', default='train',
                     help="train, test, or train_and_test")
 parser.add_argument('--n_hidden', default=3)
 parser.add_argument('--noise', default=0.2)
@@ -198,6 +198,10 @@ if __name__ == "__main__":
             optimizer_physics = torch.optim.Adam(
                 [p for p in physics.torch_meta_params.values() if p.requires_grad == True]
                 , **params.physics["optimizer"]["kwargs"])
+        elif params.physics["optimizer"]["type"] == "SGD":
+            optimizer_physics = torch.optim.SGD(
+                [p for p in physics.torch_meta_params.values() if p.requires_grad == True]
+                , **params.physics["optimizer"]["kwargs"])
         elif params.physics["optimizer"]["type"] == "none":
             optimizer_physics = None
     else:
@@ -234,7 +238,8 @@ if __name__ == "__main__":
                  experiment_dir=args.experiment_dir,
                  save_frequency=params.save_frequency,
                  verbose_frequency=params.verbose_frequency,
-                 save_each_epoch=params.save_each_epoch
+                 save_each_epoch=params.save_each_epoch,
+                 verbose_computation_time = params.verbose_computation_time
                  )
 
     if args.mode == "train_and_test":
@@ -246,7 +251,8 @@ if __name__ == "__main__":
                  experiment_dir=args.experiment_dir,
                  save_frequency=params.save_frequency,
                  verbose_frequency=params.verbose_frequency,
-                 save_each_epoch=params.save_each_epoch
+                 save_each_epoch=params.save_each_epoch,
+                 verbose_computation_time=params.verbose_computation_time
                  )
 
         restore_from = os.path.join(args.experiment_dir, "weights\last.pth.tar")
