@@ -35,8 +35,8 @@ def get_KL(real_data, sim_data):
         X_general = np.linspace( min(np.vstack([X_real, X_sim]).flatten()),
                        max(np.vstack([X_real, X_sim]).flatten()),
                        1000)
-        p_real = KDE_real.pdf(X_general) / sum(KDE_real.pdf(X_general))
-        p_sim = KDE_sim.pdf(X_general) / sum(KDE_sim.pdf(X_general))
+        p_real = KDE_real.pdf(X_general) / (sum(KDE_real.pdf(X_general)) + 1e-6)
+        p_sim = KDE_sim.pdf(X_general) / (sum(KDE_sim.pdf(X_general)) + 1e-6)
         r_star = np.log(p_real + 1e-6) - np.log(p_sim + 1e-6)
         kl = sum(p_real * r_star)
         KL.append(kl)

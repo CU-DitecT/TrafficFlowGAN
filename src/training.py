@@ -178,7 +178,7 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
                 writer.add_scalar("loss/train_phy_loss", phy_loss_np, epoch+1)
 
             # save activation to tensorboard
-            for k, v in physics_params.items():
+            for k, v in activation.items():
                 writer.add_histogram(f"activation_train/{k:s}", v, epoch+1)
             for k, v in activation_eval.items():
                 writer.add_histogram(f"activation_eval/{k:s}", v, epoch+1)
@@ -187,7 +187,9 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
                 for k, v in physics_params.items():
                     if k=='tau':
                         v = v/50.0
-                    writer.add_scalar(f"physics_params/{k:s}", v.mean(), epoch * num_steps + step)
+                    if k=='nu':
+                        v = v ##ground truth ==1
+                    writer.add_scalar(f"physics_params/{k:s}", v.mean(), epoch+1)
 
 
                 # write the hist of the gradient w.r.t x and t

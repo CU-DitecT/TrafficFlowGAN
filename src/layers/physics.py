@@ -1,4 +1,5 @@
 import torch
+import math
 import numpy as np
 import time
 
@@ -8,6 +9,7 @@ class GaussianLWR(torch.nn.Module):
         super(GaussianLWR, self).__init__()
 
         self.torch_meta_params = dict()
+        self.meta_params_trainable =meta_params_trainable
         for k, v in meta_params_value.items():
             if meta_params_trainable[k] == "True":
                 self.torch_meta_params[k] = torch.nn.Parameter(torch.tensor(v, dtype=torch.float32), requires_grad=True,
@@ -214,7 +216,7 @@ class GaussianBurgers(torch.nn.Module):
     def __init__(self, meta_params_value, meta_params_trainable, lower_bounds, upper_bounds, hypers,
                  train = False):
         super(GaussianBurgers, self).__init__()
-
+        self.meta_params_trainable = meta_params_trainable
         self.torch_meta_params = dict()
         for k, v in meta_params_value.items():
             if meta_params_trainable[k] == "True":
@@ -232,7 +234,7 @@ class GaussianBurgers(torch.nn.Module):
         self.train = train
 
     def caculate_residual(self, u, x, t, nu, model):
-        nu = nu/50.0
+        nu = nu/100.0/math.pi
         u_t = torch.autograd.grad(
             u, t, 
             grad_outputs=torch.ones_like(u).to(model.device),
@@ -252,7 +254,7 @@ class GaussianBurgers(torch.nn.Module):
             create_graph=True
         )[0]
 
-        f = (self.Jacobian_T) * u_t + (self.Jacobian_X) * u * u_x - nu * (self.Jacobian_X ** 2) * u_xx 
+        f = u_t + u * u_x - nu * u_xx
         # r = r.reshape(-1, self.hypers["n_repeat"])
         f = f.reshape(self.hypers["n_repeat"], -1).T
 
