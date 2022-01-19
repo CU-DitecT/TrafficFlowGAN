@@ -1,4 +1,5 @@
 import torch
+import math
 import numpy as np
 import time
 
@@ -8,6 +9,7 @@ class GaussianLWR(torch.nn.Module):
         super(GaussianLWR, self).__init__()
 
         self.torch_meta_params = dict()
+        self.meta_params_trainable =meta_params_trainable
         for k, v in meta_params_value.items():
             if meta_params_trainable[k] == "True":
                 self.torch_meta_params[k] = torch.nn.Parameter(torch.tensor(v, dtype=torch.float32), requires_grad=True,
@@ -209,3 +211,103 @@ class GaussianARZ(torch.nn.Module):
             #                                        self.upper_bounds[mu_key])
         return torch_params
 
+
+class GaussianBurgers(torch.nn.Module):
+    def __init__(self, meta_params_value, meta_params_trainable, lower_bounds, upper_bounds, hypers,
+                 train = False):
+        super(GaussianBurgers, self).__init__()
+        self.meta_params_trainable = meta_params_trainable
+        self.torch_meta_params = dict()
+        for k, v in meta_params_value.items():
+            if meta_params_trainable[k] == "True":
+                self.torch_meta_params[k] = torch.nn.Parameter(torch.tensor(v, dtype=torch.float32), requires_grad=True,
+                                                               )
+                self.torch_meta_params[k].retain_grad()
+            else:
+                self.torch_meta_params[k] = torch.nn.Parameter(torch.tensor(v, dtype=torch.float32), requires_grad=False,
+                                                               )
+
+        self.lower_bounds = lower_bounds
+        self.upper_bounds = upper_bounds
+        self.randn = torch.distributions.normal.Normal(torch.tensor([0.0]), torch.tensor([1.0]))
+        self.hypers = hypers
+        self.train = train
+
+    def caculate_residual(self, u, x, t, nu, model):
+        nu = nu/100.0/math.pi
+        u_t = torch.autograd.grad(
+            u, t, 
+            grad_outputs=torch.ones_like(u).to(model.device),
+            retain_graph=True,
+            create_graph=True
+        )[0]
+        u_x = torch.autograd.grad(
+            u, x, 
+            grad_outputs=torch.ones_like(u).to(model.device),
+            retain_graph=True,
+            create_graph=True
+        )[0]
+        u_xx = torch.autograd.grad(
+            u_x, x, 
+            grad_outputs=torch.ones_like(u_x).to(model.device),
+            retain_graph=True,
+            create_graph=True
+        )[0]
+
+        f = u_t + u * u_x - nu * u_xx
+        # r = r.reshape(-1, self.hypers["n_repeat"])
+        f = f.reshape(self.hypers["n_repeat"], -1).T
+
+        f_mean = torch.square(torch.mean(f, dim=1))
+
+        return f_mean, u_t, u_x, u_xx, f
+
+    def get_residuals(self, model, x_unlabel):
+        # get gradient
+        batch_size = x_unlabel.shape[0]
+        x = torch.tensor(x_unlabel[:, 0:1], requires_grad=True).float().to(model.device).repeat(self.hypers["n_repeat"],1)
+        t = torch.tensor(x_unlabel[:, 1:2], requires_grad=True).float().to(model.device).repeat(self.hypers["n_repeat"],1)
+        u, _ = model.test(torch.cat((x, t), 1))
+        torch_params = self.sample_params(self.torch_meta_params, batch_size)
+
+        f_mean, u_t, u_x, u_xx, f = self.caculate_residual(u, x, t, torch_params["nu"],model)
+
+        # Umax_line = np.linspace(0.1,2,50)
+        # rhomax_line = np.linspace(0.1,2,50)
+        # r_out = np.zeros((Umax_line.shape[0],rhomax_line.shape[0]))
+        # for i in range(Umax_line.shape[0]):
+        #     print('i:',i)
+        #     for j in range(rhomax_line.shape[0]):
+        #         r_mean, drho_dx, drho_dt, eq_2, r = self.caculate_residual(rho, x, t, torch.from_numpy(np.array(Umax_line[i])),
+        #                                                                    torch.from_numpy(np.array(rhomax_line[j])), torch.tensor([0.005],dtype=torch.float32),
+        #                                                                    model)
+        #         r_out[i][j] = r_mean.mean().cpu().detach().numpy()
+        # with open('/home/ubuntu/PhysFlow/test_21loop_100000.npy','wb') as f:
+        #     np.save(f,r_out)
+
+
+        gradient_hist = {"u": u.cpu().detach().numpy(),
+                         "u_t": u_t.cpu().detach().numpy(),
+                         "u_x": u_x.cpu().detach().numpy(),
+                         "u_xx": u_xx.cpu().detach().numpy(),
+                         "f_mean": f_mean.cpu().detach().numpy()}
+
+        for k in torch_params.keys():
+            torch_params[k] = torch_params[k].cpu().detach().numpy()
+
+        return f_mean, torch_params, gradient_hist
+
+    def sample_params(self, torch_meta_params, batch_size):
+        meta_pairs = [("mu_nu", "sigma_nu")]
+
+        n_repeat = self.hypers["n_repeat"]
+        torch_params = dict()
+        for mu_key, sigma_key in meta_pairs:
+            param_key = mu_key.split("_")[1]
+            z = self.randn.sample(sample_shape=(1, n_repeat))[0]
+            z = torch.repeat_interleave(z, batch_size, dim=0)
+            torch_params[param_key] = torch_meta_params[mu_key] # + torch_meta_params[sigma_key] * z
+            torch_params[param_key].retain_grad()
+            #torch_params[param_key] = torch.clamp(torch_params[param_key], self.lower_bounds[mu_key],
+            #                                        self.upper_bounds[mu_key])
+        return torch_params

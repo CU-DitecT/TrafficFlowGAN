@@ -192,7 +192,9 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
                 for k, v in physics_params.items():
                     if k=='tau':
                         v = v/50.0
-                    writer.add_scalar(f"physics_params/{k:s}", v.mean(), epoch * num_steps + step)
+                    if k=='nu':
+                        v = v ##ground truth ==1
+                    writer.add_scalar(f"physics_params/{k:s}", v.mean(), epoch+1)
 
 
                 # write the hist of the gradient w.r.t x and t

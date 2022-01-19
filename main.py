@@ -14,10 +14,11 @@ from src.utils import set_logger, delete_file_or_folder
 from src.training import training, test, test_multiple_rounds
 from src.dataset.arz_data import arz_data_loader
 from src.dataset.lwr_data import lwr_data_loader
+from src.dataset.burgers_data import burgers_data_loader
 
 from src.layers.physics import GaussianLWR
 from src.layers.physics import GaussianARZ
-
+from src.layers.physics import GaussianBurgers
 from src.metrics import instantiate_losses, instantiate_metrics, functionalize_metrics
 
 #CUDA support
@@ -30,7 +31,7 @@ else:
     logging.info("cuda is not available")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--experiment_dir', default='experiments/arz_learning_z',
+parser.add_argument('--experiment_dir', default='experiments/burgers_learning_z',
                     help="Directory containing experiment_setting.json")
 parser.add_argument('--restore_from', default= None, #"experiments/lwr_learning_z/weights/last.pth.tar",
                     help="Optional, file location containing weights to reload")
@@ -99,6 +100,15 @@ if __name__ == "__main__":
         test_label_u = Exact_u.flatten()[:, None]
         test_label = np.concatenate([test_label_rho, test_label_u], 1)
 
+    elif params.data['type'] == 'burgers':
+        data_loaded = burgers_data_loader(params.data['noise_scale'],params.data['noise_number'], 
+                                            params.data['noise_miu'], params.data['noise_sigma'])
+        train_feature, train_label, train_feature_phy, X, T = data_loaded.load_data()
+        test_feature, Exact_rho = data_loaded.load_test()
+        test_label = Exact_rho.flatten()[:, None]
+        gaussion_noise = np.random.normal(params.data['noise_miu'], params.data['noise_sigma'],
+                                          test_label.shape[0]).reshape(-1, 1)
+        test_label = np.concatenate([test_label, gaussion_noise], 1)
     logging.info("load data: " + f"{params.data['type']}")
     logging.info("train feature shape: " + f"{train_feature.shape}")
     logging.info("train label shape: " + f"{train_label.shape}")
@@ -135,6 +145,14 @@ if __name__ == "__main__":
         physics.to(device)
     elif params.physics["type"] == "arz":
         physics = GaussianARZ(params.physics["meta_params_value"],
+                              params.physics["meta_params_trainable"],
+                              params.physics["lower_bounds"],
+                              params.physics["upper_bounds"],
+                              params.physics["hypers"],
+                              train=(params.physics["train"] == "True"))
+        physics.to(device)
+    elif params.physics["type"] == "burgers":
+        physics = GaussianBurgers(params.physics["meta_params_value"],
                               params.physics["meta_params_trainable"],
                               params.physics["lower_bounds"],
                               params.physics["upper_bounds"],
