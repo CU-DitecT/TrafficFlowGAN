@@ -51,9 +51,9 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
                                  "epoch": 0},
                             }
     Data_loss = []
+    np.random.seed(1)
     for epoch in range(begin_at_epoch, epochs):
         # shuffle the data
-        np.random.seed(1)
         idx = np.random.choice(X_train.shape[0], X_train.shape[0], replace=False)
         idx_phy = np.random.choice(X_train_phy.shape[0], X_train_phy.shape[0], replace=False)
         X_train = X_train[idx, :]
@@ -66,13 +66,18 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
         ####
 
         # train step
-        num_steps = X_train.shape[0] // batch_size
+        # num_steps = X_train.shape[0] // batch_size
+
+        num_steps = 100  #! HARDCODE HERE!#
+
         # batch_size_phy = X_train_phy.shape[0] // num_steps
         batch_size_phy = batch_size
         for step in range(num_steps):
-            x_batch = X_train[step * batch_size:(step + 1) * batch_size, :]
-            y_batch = y_train[step * batch_size:(step + 1) * batch_size, :]
-
+            # x_batch = X_train[step * batch_size:(step + 1) * batch_size, :]
+            # y_batch = y_train[step * batch_size:(step + 1) * batch_size, :]
+            random_idx = np.random.choice(X_train.shape[0], batch_size, replace = False)
+            x_batch = X_train[random_idx, :]
+            y_batch = y_train[random_idx, :]
             # random sample X_train_phy
             random_idx = np.random.choice(X_train_phy.shape[0], batch_size_phy, replace=False)
             x_batch_phy = X_train_phy[random_idx, :]
@@ -178,7 +183,7 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
                 writer.add_scalar("loss/train_phy_loss", phy_loss_np, epoch+1)
 
             # save activation to tensorboard
-            for k, v in physics_params.items():
+            for k, v in activation.items():
                 writer.add_histogram(f"activation_train/{k:s}", v, epoch+1)
             for k, v in activation_eval.items():
                 writer.add_histogram(f"activation_eval/{k:s}", v, epoch+1)

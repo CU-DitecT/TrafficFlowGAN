@@ -42,7 +42,7 @@ def check_exist_and_add_suffix(experiment_dir, suffix, N=0):
 # launch job
 args = parser.parse_args()
 # data_dir = "data/ngsim/ngsim_v_dt=1"
-Max_round = 2
+Max_round = 1
 experiment_root_dir = args.experiment_root_dir
 # experiment_root_dir = "experiments_hyper_tune/ngsim_v_dt=1/pinn_drop"
 json_path = os.path.join(experiment_root_dir, 'experiment_setting.json')
@@ -78,7 +78,7 @@ while flag == 0:
         N = 0
         suffix = "round"
         experiment_dir, N = check_exist_and_add_suffix(experiment_dir, suffix, N=N)
-        if N > Max_round:
+        if N > Max_round-1:
             flag = 1
             continue
 
