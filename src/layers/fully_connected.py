@@ -23,8 +23,9 @@ def instantiate_activation_function(function_name):
 
 def get_fully_connected_layer(input_dim, output_dim, n_hidden, hidden_dim,
                               activation_type="leaky_relu",
-                              last_activation_type="tanh"):
-    modules = [nn.Linear(input_dim, hidden_dim)]
+                              last_activation_type="tanh",
+                              device=None):
+    modules = [nn.Linear(input_dim, hidden_dim, device=device)]
     activation = instantiate_activation_function(activation_type)
     if activation is not None:
         modules.append(activation)
@@ -32,14 +33,14 @@ def get_fully_connected_layer(input_dim, output_dim, n_hidden, hidden_dim,
     # add hidden layers
     if n_hidden > 1:
         for l in range(n_hidden-1):
-            modules.append(nn.Linear(hidden_dim, hidden_dim))
+            modules.append(nn.Linear(hidden_dim, hidden_dim, device=device))
             activation = instantiate_activation_function(activation_type)
             if activation is not None:
                 modules.append(activation)
 
     # add the last layer
 
-    modules.append(nn.Linear(hidden_dim, output_dim))
+    modules.append(nn.Linear(hidden_dim, output_dim, device=device))
     last_activation = instantiate_activation_function(last_activation_type)
 
     modules.append(Multiply(0.5))

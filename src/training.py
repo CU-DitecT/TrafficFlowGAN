@@ -229,24 +229,9 @@ def test(model, test_feature, test_target,
         assert os.path.isfile(restore_from), "restore_from is not a file"
         # restore model
         begin_at_epoch=0
-        begin_at_epoch = utils.load_checkpoint(restore_from, model,optimizer=None,epoch= begin_at_epoch)
+        begin_at_epoch = utils.load_checkpoint(restore_from, model,optimizer=None,epoch= begin_at_epoch,
+                                               device=model.device)
         logging.info(f"Restoring parameters from {restore_from}, restored epoch is {begin_at_epoch:d}")
-
-    """
-    if restore_from is not None:
-        if ("phys" in model.name) and (train_PUNN is False):
-            meta_params = load_json(restore_from)
-            layer_specs, hyper_params = model.layer_specs, model.hyper_params
-            layer_specs["primal_physics"]["net_config"] = list(layer_specs["primal_physics"]["net_config"])
-            layer_specs["primal_physics"]["net_config"][0] = meta_params
-            layer_specs["primal_physics"]["net_config"] = tuple(layer_specs["primal_physics"]["net_config"])
-            parent_class = model.__class__
-            model =parent_class(layer_specs, hyper_params, name=model.name)
-        else:
-            model.load_weights(restore_from).expect_partial()
-    else:
-        raise FileExistsError("model not exist in "+ restore_from)
-    """
 
     # make prediction
     #pre_train = not train_PUNN
@@ -318,13 +303,16 @@ def test(model, test_feature, test_target,
             kl_u = func(exact_sample_u, samples_mean_u)
             key_u=k+'_u'
             metrics_dict[key_u] = [np.mean(kl_u)]
-            
-            
+
+        elif k == "nll":
+            log_prob, _ = model.log_prob(test_target, test_feature)
+            nll = -log_prob.mean()
+            metrics_dict[k] = [nll]
         else:
            metrics_dict[k] = [func(torch.from_numpy(test_target), torch.from_numpy(test_prediction)).item()]
         print('{}: done'.format(k))
 
-    return metrics_dict, test_prediction, kl_rho,kl_u, exact_sample_u,exact_sample_rho, samples_mean_u,samples_mean_rho
+    return metrics_dict, test_prediction, exact_sample_u,exact_sample_rho, samples_mean_u,samples_mean_rho
     
 
 
@@ -335,7 +323,7 @@ def test_multiple_rounds(model, test_feature,test_label, test_rounds=1,
                          save_dir = None,
                          model_alias = None,                        
                 **kwargs):
-    metrics_dict, test_prediction, kl_rho,kl_u, exact_sample_u,exact_sample_rho, samples_mean_u,samples_mean_rho = test(model, test_feature,test_label, 
+    metrics_dict, test_prediction, exact_sample_u,exact_sample_rho, samples_mean_u,samples_mean_rho = test(model, test_feature,test_label,
                                          **kwargs)
     logging.info("Restoring parameters from {}".format(kwargs["restore_from"]))
     if test_rounds > 1:
@@ -363,8 +351,8 @@ def test_multiple_rounds(model, test_feature,test_label, test_rounds=1,
                                         f"targets_test_rho.csv")
     save_path_target_u = os.path.join(save_dir, model_alias,
                                         f"targets_test_u.csv")
-    save_path_kl_rho = os.path.join(save_dir, model_alias,f"kl_rho_test.csv")
-    save_path_kl_u = os.path.join(save_dir, model_alias,f"kl_u_test.csv")
+    # save_path_kl_rho = os.path.join(save_dir, model_alias,f"kl_rho_test.csv")
+    # save_path_kl_u = os.path.join(save_dir, model_alias,f"kl_u_test.csv")
     
     save_dict_to_json(metrics_dict, save_path_metric)
     #np.savetxt(save_path_prediction, test_prediction, delimiter=",")
@@ -376,8 +364,8 @@ def test_multiple_rounds(model, test_feature,test_label, test_rounds=1,
     np.savetxt(save_path_feature, test_feature, delimiter=",")
     np.savetxt(save_path_target_rho, exact_sample_rho, delimiter=",")
     np.savetxt(save_path_target_u, exact_sample_u, delimiter=",")
-    np.savetxt(save_path_kl_rho, kl_rho, delimiter=",")
-    np.savetxt(save_path_kl_u, kl_u, delimiter=",")
+    # np.savetxt(save_path_kl_rho, kl_rho, delimiter=",")
+    # np.savetxt(save_path_kl_u, kl_u, delimiter=",")
 
 
 

@@ -21,6 +21,7 @@ from src.layers.physics import GaussianARZ
 from src.layers.physics import GaussianBurgers
 from src.metrics import instantiate_losses, instantiate_metrics, functionalize_metrics
 
+
 #CUDA support
 if torch.cuda.is_available():
     device = torch.device('cuda:0')
@@ -54,6 +55,11 @@ if __name__ == "__main__":
     assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
     params = Params(json_path)
 
+    # if test, us
+    if args.mode == "test":
+        device = torch.device('cpu')
+        logging.info("In the test mode, use cpu")
+
     # Safe Overwrite. Avoid to overwrite the previous experiment by mistake.
     force_overwrite = args.force_overwrite
     if force_overwrite is True:
@@ -64,7 +70,7 @@ if __name__ == "__main__":
         if args.mode == "test":
             # every file under the root of the "experiment_dir"
             for file_folder in os.listdir(args.experiment_dir):
-                if file_folder != "test":
+                if file_folder != "test_result":
                     safe_files.append(file_folder)
 
         # delete everything that is not in "safe_files"
@@ -129,10 +135,12 @@ if __name__ == "__main__":
               params.affine_coupling_layers["t_net"]["hidden_dim"])
 
     s_kwargs = {"activation_type": params.affine_coupling_layers["s_net"]["activation_type"],
-                "last_activation_type": params.affine_coupling_layers["s_net"]["last_activation_type"]}
+                "last_activation_type": params.affine_coupling_layers["s_net"]["last_activation_type"],
+                "device":device}
 
     t_kwargs = {"activation_type": params.affine_coupling_layers["t_net"]["activation_type"],
-                "last_activation_type": params.affine_coupling_layers["t_net"]["last_activation_type"]}
+                "last_activation_type": params.affine_coupling_layers["t_net"]["last_activation_type"],
+                "device":device}
 
     # get physics
     if params.physics["type"] == "lwr":
@@ -149,7 +157,8 @@ if __name__ == "__main__":
                               params.physics["lower_bounds"],
                               params.physics["upper_bounds"],
                               params.physics["hypers"],
-                              train=(params.physics["train"] == "True"))
+                              train=(params.physics["train"] == "True"),
+                              device=device).to(device)
         physics.to(device)
     elif params.physics["type"] == "burgers":
         physics = GaussianBurgers(params.physics["meta_params_value"],
@@ -188,10 +197,12 @@ if __name__ == "__main__":
                         params.affine_coupling_layers["z_sigma_net"]["n_hidden"],
                         params.affine_coupling_layers["z_sigma_net"]["hidden_dim"])
         z_miu_kwargs = {"activation_type": params.affine_coupling_layers["z_miu_net"]["activation_type"],
-                        "last_activation_type": params.affine_coupling_layers["z_miu_net"]["last_activation_type"]}
+                        "last_activation_type": params.affine_coupling_layers["z_miu_net"]["last_activation_type"],
+                        "device":device}
 
         z_sigma_kwargs = {"activation_type": params.affine_coupling_layers["z_sigma_net"]["activation_type"],
-                          "last_activation_type": params.affine_coupling_layers["z_sigma_net"]["last_activation_type"]}
+                          "last_activation_type": params.affine_coupling_layers["z_sigma_net"]["last_activation_type"],
+                          "device": device}
         model = RealNVP_lz(params.affine_coupling_layers["z_dim"],
                            params.affine_coupling_layers["n_transformation"],
                            params.affine_coupling_layers["train"],
@@ -273,7 +284,14 @@ if __name__ == "__main__":
                  verbose_computation_time=params.verbose_computation_time
                  )
 
-        restore_from = os.path.join(args.experiment_dir, "weights\last.pth.tar")
+        # run test
+        # !While, the used GPU memory may not be released. So it is recommended to run mode=train and then mode=test!#
+        device = torch.device('cpu')
+        logging.info("Before testing, switch to cpu")
+        physics.to(device)
+        model.to(device)
+
+        restore_from = os.path.join(args.experiment_dir, "weights/last.path.tar")
         save_dir = os.path.join(args.experiment_dir, "test_result/")
         model_alias = args.experiment_dir.split('/')[-1]
         test_multiple_rounds(model, test_feature, test_label, test_rounds=args.test_rounds, save_dir=save_dir,
@@ -283,7 +301,7 @@ if __name__ == "__main__":
         print('train_and_test done')
 
     if args.mode == "test":
-        restore_from = os.path.join(args.experiment_dir, "weights/last.pth.tar")
+        restore_from = os.path.join(args.experiment_dir, "weights/last.path.tar")
         save_dir = os.path.join(args.experiment_dir, "test_result/")
         model_alias = args.experiment_dir.split('/')[-1]
         test_multiple_rounds(model, test_feature, test_label,
