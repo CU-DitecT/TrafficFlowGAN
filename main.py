@@ -330,7 +330,7 @@ if __name__ == "__main__":
         restore_from = os.path.join(args.experiment_dir, "weights/last.path.tar")
         save_dir = os.path.join(args.experiment_dir, "test_result/")
         model_alias = args.experiment_dir.split('/')[-1]
-        """
+        
         test_multiple_rounds(model, test_feature, test_label,
                              test_rounds=args.test_rounds,
                              save_dir=save_dir,
@@ -340,7 +340,7 @@ if __name__ == "__main__":
                              n_samples=args.test_sample,
                              noise=args.noise,
                              args=args)
-        """
+        
         save_path_x = os.path.join(save_dir, model_alias,
                                         f"x.csv")
         save_path_t = os.path.join(save_dir, model_alias,
