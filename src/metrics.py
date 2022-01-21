@@ -36,7 +36,8 @@ def instantiate_metrics(metric_name):
         "mae":torch.nn.L1Loss(),
         #"kl": torch.nn.BCEWithLogitsLoss(),
         "kl": lambda y, y_pred: get_KL(y, y_pred),
-         "nlpd": get_NLPD
+        "nlpd": get_NLPD,
+        "nll": None
     }
 
     return metric_dict[metric_name]

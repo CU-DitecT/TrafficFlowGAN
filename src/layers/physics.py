@@ -5,14 +5,15 @@ import time
 
 class GaussianLWR(torch.nn.Module):
     def __init__(self, meta_params_value, meta_params_trainable, lower_bounds, upper_bounds, hypers,
-                 train = False):
+                 train = False,
+                 device=None):
         super(GaussianLWR, self).__init__()
 
         self.torch_meta_params = dict()
         self.meta_params_trainable =meta_params_trainable
         for k, v in meta_params_value.items():
             if meta_params_trainable[k] == "True":
-                self.torch_meta_params[k] = torch.nn.Parameter(torch.tensor(v, dtype=torch.float32), requires_grad=True,
+                self.torch_meta_params[k] = torch.nn.Parameter(torch.tensor(v, dtype=torch.float32, device=device), requires_grad=True,
                                                                )
                 self.torch_meta_params[k].retain_grad()
             else:
@@ -105,32 +106,34 @@ class GaussianLWR(torch.nn.Module):
 
 class GaussianARZ(torch.nn.Module):
     def __init__(self, meta_params_value, meta_params_trainable, lower_bounds, upper_bounds, hypers,
-                 train = False):
+                 train = False,
+                 device=None):
         super(GaussianARZ, self).__init__()
         self.meta_params_trainable = meta_params_trainable
-        self.torch_meta_params = dict()
+        self.torch_meta_params = torch.nn.ParameterDict()
         for k, v in meta_params_value.items():
             if meta_params_trainable[k] == "True":
-                self.torch_meta_params[k] = torch.nn.Parameter(torch.tensor(v, dtype=torch.float32), requires_grad=True,
+                self.torch_meta_params[k] = torch.nn.Parameter(torch.tensor(v, dtype=torch.float32, device=device), requires_grad=True,
                                                                )
                 self.torch_meta_params[k].retain_grad()
             else:
-                self.torch_meta_params[k] = torch.nn.Parameter(torch.tensor(v, dtype=torch.float32), requires_grad=False,
+                self.torch_meta_params[k] = torch.nn.Parameter(torch.tensor(v, dtype=torch.float32, device=device), requires_grad=False,
                                                                )
 
         self.lower_bounds = lower_bounds
         self.upper_bounds = upper_bounds
-        self.randn = torch.distributions.normal.Normal(torch.tensor([0.0]), torch.tensor([1.0]))
+        self.randn = torch.distributions.normal.Normal(torch.tensor([0.0],device=device), torch.tensor([1.0], device=device))
         self.hypers = hypers
         self.train = train
+        self.device=device
 
     def caculate_residual(self, rho, u,  x, t, Umax, RHOmax, Tau, model):
         Tau=Tau/50.0
 
-        drho_dt = torch.autograd.grad(rho, t, torch.ones([t.shape[0], 1]).to(model.device),
+        drho_dt = torch.autograd.grad(rho, t, torch.ones([t.shape[0], 1], device=self.device).to(model.device),
                                       retain_graph=True, create_graph=True)[0]
         # print(f"one autograd time: {time.time() - start_time:.5f}")
-        drho_dx = torch.autograd.grad(rho, x, torch.ones([x.shape[0], 1]).to(model.device),
+        drho_dx = torch.autograd.grad(rho, x, torch.ones([x.shape[0], 1], device=self.device).to(model.device),
                                       retain_graph=True, create_graph=True)[0]
         du_dx = torch.autograd.grad(u, x, torch.ones([x.shape[0], 1]).to(model.device),
                                       retain_graph=True, create_graph=True)[0]
@@ -166,8 +169,8 @@ class GaussianARZ(torch.nn.Module):
     def get_residuals(self, model, x_unlabel):
         # get gradient
         batch_size = x_unlabel.shape[0]
-        x = torch.tensor(x_unlabel[:, 0:1], requires_grad=True).float().to(model.device).repeat(self.hypers["n_repeat"],1)
-        t = torch.tensor(x_unlabel[:, 1:2], requires_grad=True).float().to(model.device).repeat(self.hypers["n_repeat"],1)
+        x = torch.tensor(x_unlabel[:, 0:1], requires_grad=True, device=self.device).float().to(model.device).repeat(self.hypers["n_repeat"],1)
+        t = torch.tensor(x_unlabel[:, 1:2], requires_grad=True, device=self.device).float().to(model.device).repeat(self.hypers["n_repeat"],1)
         rho, u = model.test(torch.cat((x, t), 1))
         torch_params = self.sample_params(self.torch_meta_params, batch_size)
 

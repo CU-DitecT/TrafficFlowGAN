@@ -33,7 +33,8 @@ class RealNVP_lz(nn.Module):
         self.device = device
         self.t = torch.nn.ModuleList(t)
         self.s = torch.nn.ModuleList(s)
-        self.prior = torch.distributions.MultivariateNormal(torch.zeros(z_dim), torch.eye(z_dim)*0.05)
+        self.prior = torch.distributions.MultivariateNormal(torch.zeros(z_dim, device=device),
+                                                            torch.eye(z_dim, device=device)*0.05)
         self.train = (train == "True")
 
     def g(self, z, c):
@@ -54,7 +55,7 @@ class RealNVP_lz(nn.Module):
                       "x2": x[:, 1],
                       "c_1": c[:,0],
                       "c_2": c[:,1]}
-        z = torch.from_numpy(x).to(self.device) # z = x
+        z = torch.from_numpy(x.astype(np.float32)).to(self.device) # z = x
         c_ = torch.from_numpy(c).to(self.device)
         log_det_J = z.new_zeros(x.shape[0])  # log_det_J = x.new_zeros(x.shape[0])
         for i in reversed(range(len(self.t))):
@@ -87,14 +88,14 @@ class RealNVP_lz(nn.Module):
     def log_prob(self, x, c):
         z, log_p, activation = self.f(x, c)
         miu, sigma = self.NN_z(torch.from_numpy(c).to(self.device))
-        L = 0.5*torch.log(torch.Tensor([2*math.pi]))+torch.log(sigma)+torch.div(torch.mul((z-miu),(z-miu)),2*torch.mul(sigma,sigma))
+        L = 0.5*torch.log(torch.tensor([2*math.pi], device=self.device))+torch.log(sigma)+torch.div(torch.mul((z-miu),(z-miu)),2*torch.mul(sigma,sigma))
         L = L[:,0:1]+L[:,1:2]
 
-        return -L  + log_p , activation
+        return -L.squeeze() + log_p , activation
 
     def eval(self, c):
         torch.manual_seed(1)
-        z = self.prior.sample((c.shape[0], 1))
+        z = self.prior.sample((c.shape[0], 1)).to(self.device)
         z = torch.squeeze(z)
         c_ = torch.from_numpy(c).to(self.device)
         # log_p = self.prior.log_prob(z, c)
@@ -105,7 +106,7 @@ class RealNVP_lz(nn.Module):
 
     def test(self, c):
         #torch.manual_seed(1)
-        z = self.prior.sample((c.shape[0], 1))
+        z = self.prior.sample((c.shape[0], 1)).to(self.device)
         z = torch.squeeze(z)
         miu,sigma = self.NN_z(c)
         z_cali = z*sigma + miu
