@@ -8,6 +8,8 @@ import logging
 import os
 from src.utils import save_dict_to_json, check_exist_and_create, check_and_make_dir
 from torch.utils.tensorboard import SummaryWriter
+from src.dataset.gan_helper import gan_helper
+
 
 import time
 
@@ -15,7 +17,7 @@ from tqdm import tqdm
 from scipy.interpolate import griddata
 
 
-def training(model, optimizer, train_feature, train_target, train_feature_phy,
+def training(model, optimizer,discriminator, train_feature, train_target, train_feature_phy, device,
              physics=None,
              physics_optimizer=None,
              restore_from=None,
@@ -25,7 +27,9 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
              save_frequency=1,
              verbose_frequency=1,
              verbose_computation_time=0,
-             save_each_epoch="False"):
+             save_each_epoch="False",
+             training_gan = True,
+             ):
     # Initialize tf.Saver instances to save weights during metrics_factory
     X_train = train_feature
     y_train = train_target
@@ -103,9 +107,31 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
                 loss += (1 - physics.hypers["alpha"]) * phy_loss
                 phy_loss_np = phy_loss.cpu().detach().numpy()
 
+            if training_gan is True:
+                Gan_helper = gan_helper(0.02)
+                Ground_truth_figure = Gan_helper.load_ground_truth()
+                rho_test, u_test = model.test(torch.from_numpy(Gan_helper.X_T_low_d).to(device))
+                generator_figure = Gan_helper.reshape_to_figure(rho_test.detach(),u_test.detach())
+                T_real = discriminator.forward(torch.from_numpy(Ground_truth_figure).to(device))
+                T_fake = discriminator.forward(generator_figure)
+                discriminator.optimizer.zero_grad()
+                loss_d = - (torch.log(1-torch.sigmoid(T_real)+1e-8) + torch.log(torch.sigmoid(T_fake)+1e-8))
+                loss_d.backward(retain_graph=True)
+                #optimizer.zero_grad()
+                loss_d_np = loss_d.cpu().detach().numpy()
+                discriminator.optimizer.step()
+                #discriminator.optimizer.zero_grad()
+                del(loss_d)
+                del(T_fake)
+                T_fake = discriminator.forward(generator_figure)
+                loss_g = T_fake
+                loss_g_np = loss_g.cpu().detach().numpy()
+                loss += loss_g.squeeze().squeeze()
+
             start_time = time.time()
 
             loss.backward(retain_graph=True)
+            discriminator.optimizer.step()
             backward_all_time = time.time() - start_time
 
             start_time = time.time()
@@ -137,6 +163,8 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
             del([data_loss, loss])
             if physics is not None:
                 del(phy_loss)
+            if training_gan is True:
+                del(loss_g)
 
             # below is for debug
             # a = activation_eval["x1_eval"].detach().cpu().numpy()
@@ -145,7 +173,7 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
             # a = 1
 
             # below is to force the iteration # for each epoch to be 1.
-            # break
+            break
 
 
         # logging
@@ -259,7 +287,7 @@ def test(model, test_feature, test_target,
     torch.manual_seed(1)
     np.random.seed(1)
     for i in tqdm(range(0, n_samples )):
-      rho_tensor, u_tensor = model.test(torch.from_numpy(test_feature))
+      rho_tensor, u_tensor = model.test(torch.from_numpy(test_feature).to(device))
       samples_mean_rho[:,i:i+1],samples_mean_u[:,i:i+1] = rho_tensor.detach().numpy(), u_tensor.detach().numpy()
     rho_star=test_target[:,0][:,None]
     u_star=test_target[:,1][:,None]
@@ -309,8 +337,7 @@ def test(model, test_feature, test_target,
             ###BCE with logit:
             #kl = func(torch.from_numpy(test_target), torch.from_numpy(test_prediction)).item()
             #metrics_dict[k] =[kl]
-            
-            
+
             ###get_KL:
             kl_rho=func(exact_sample_rho, samples_mean_rho)
             key_rho=k+'_rho'

@@ -15,12 +15,13 @@ from src.training import training, test, test_multiple_rounds
 from src.dataset.arz_data import arz_data_loader
 from src.dataset.lwr_data import lwr_data_loader
 from src.dataset.burgers_data import burgers_data_loader
+from src.layers.discriminator import Discriminator
 
 from src.layers.physics import GaussianLWR
 from src.layers.physics import GaussianARZ
 from src.layers.physics import GaussianBurgers
 from src.metrics import instantiate_losses, instantiate_metrics, functionalize_metrics
-
+torch.autograd.set_detect_anomaly(True)
 #CUDA support
 if torch.cuda.is_available():
     device = torch.device('cuda:0')
@@ -31,7 +32,7 @@ else:
     logging.info("cuda is not available")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--experiment_dir', default='experiments/burgers_learning_z',
+parser.add_argument('--experiment_dir', default='experiments/arz_learning_z',
                     help="Directory containing experiment_setting.json")
 parser.add_argument('--restore_from', default= None, #"experiments/lwr_learning_z/weights/last.pth.tar",
                     help="Optional, file location containing weights to reload")
@@ -40,7 +41,7 @@ parser.add_argument('--mode', default='train',
 parser.add_argument('--n_hidden', default=3)
 parser.add_argument('--noise', default=0.2)
 parser.add_argument('--test_sample', default=3)  # 100
-parser.add_argument('--test_rounds', default=2)  # 3
+parser.add_argument('--test_rounds', default=1)  # 3
 parser.add_argument('--nlpd_use_mean', default='True')
 parser.add_argument('--nlpd_n_bands', default=1000)
 parser.add_argument('--force_overwrite', default=False, action='store_true',
@@ -203,7 +204,8 @@ if __name__ == "__main__":
                            z_miu_args, z_sigma_args,
                            z_miu_kwargs, z_sigma_kwargs)
         model.to(device)
-
+    #### discriminator
+    discriminator = Discriminator((97,25,2)).to(device)
     # create optimizer
     if params.affine_coupling_layers["optimizer"]["type"] == "Adam":
         optimizer = torch.optim.Adam([p for p in model.parameters() if p.requires_grad == True]
@@ -249,7 +251,7 @@ if __name__ == "__main__":
 
     if (args.mode == "train") or (args.mode == "train_and_test"):
         logging.info("Starting training for {} epoch(s)".format(params.epochs))
-        training(model, optimizer, train_feature, train_label, train_feature_phy,
+        training(model, optimizer,discriminator, train_feature, train_label, train_feature_phy,device,
                  restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
                  physics=physics,
                  physics_optimizer=optimizer_physics,
@@ -262,7 +264,7 @@ if __name__ == "__main__":
 
     if args.mode == "train_and_test":
         logging.info("Starting training for {} epoch(s)".format(params.epochs))
-        training(model, optimizer, train_feature, train_label,
+        training(model, optimizer, discriminator, train_feature, train_label,device,
                  restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
                  physics=physics,
                  physics_optimizer=optimizer_physics,
