@@ -339,7 +339,7 @@ def test(model, test_feature, test_target,
            metrics_dict[k] = [func(torch.from_numpy(test_target), torch.from_numpy(test_prediction)).item()]
         print('{}: done'.format(k))
 
-    return metrics_dict, test_prediction, exact_sample_u,exact_sample_rho, samples_mean_u,samples_mean_rho
+    return metrics_dict, test_prediction, exact_sample_u,exact_sample_rho, samples_mean_u,samples_mean_rho,kl_u,kl_rho
     
 
 
@@ -350,7 +350,7 @@ def test_multiple_rounds(model, test_feature,test_label, test_rounds=1,
                          save_dir = None,
                          model_alias = None,                        
                 **kwargs):
-    metrics_dict, test_prediction, exact_sample_u,exact_sample_rho, samples_mean_u,samples_mean_rho = test(model, test_feature,test_label,
+    metrics_dict, test_prediction, exact_sample_u,exact_sample_rho, samples_mean_u,samples_mean_rho, kl_u,kl_rho= test(model, test_feature,test_label,
                                          **kwargs)
     logging.info("Restoring parameters from {}".format(kwargs["restore_from"]))
     if test_rounds > 1:
@@ -378,8 +378,8 @@ def test_multiple_rounds(model, test_feature,test_label, test_rounds=1,
                                         f"targets_test_rho.csv")
     save_path_target_u = os.path.join(save_dir, model_alias,
                                         f"targets_test_u.csv")
-    # save_path_kl_rho = os.path.join(save_dir, model_alias,f"kl_rho_test.csv")
-    # save_path_kl_u = os.path.join(save_dir, model_alias,f"kl_u_test.csv")
+    save_path_kl_rho = os.path.join(save_dir, model_alias,f"kl_rho_test.csv")
+    save_path_kl_u = os.path.join(save_dir, model_alias,f"kl_u_test.csv")
     
     save_dict_to_json(metrics_dict, save_path_metric)
     #np.savetxt(save_path_prediction, test_prediction, delimiter=",")
@@ -391,8 +391,8 @@ def test_multiple_rounds(model, test_feature,test_label, test_rounds=1,
     np.savetxt(save_path_feature, test_feature, delimiter=",")
     np.savetxt(save_path_target_rho, exact_sample_rho, delimiter=",")
     np.savetxt(save_path_target_u, exact_sample_u, delimiter=",")
-    # np.savetxt(save_path_kl_rho, kl_rho, delimiter=",")
-    # np.savetxt(save_path_kl_u, kl_u, delimiter=",")
+    np.savetxt(save_path_kl_rho, kl_rho, delimiter=",")
+    np.savetxt(save_path_kl_u, kl_u, delimiter=",")
 
 
 

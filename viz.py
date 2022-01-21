@@ -7,9 +7,9 @@ from src.metrics_factory.get_KL import get_kde_curve
 from src.utils import check_exist_and_create, load_json, save_dict_to_json
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--experiment_dir', default='experiments/lwr_learning_z',
+parser.add_argument('--experiment_dir', default='experiments/arz_learning_z',
                     help="Directory containing 'test' ")
-parser.add_argument('--result_dir', default='experiments/lwr_learning_z/test_result/lwr_learning_z/',
+parser.add_argument('--result_dir', default='experiments/arz_learning_z/test_result/arz_learning_z/',
                     help="folder to viz")
 parser.add_argument('--mode', default='debug',
                     help="mode debug keeps more detail; mode paper is clean' ")

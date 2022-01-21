@@ -34,15 +34,17 @@ else:
     logging.info("cuda is not available")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--experiment_dir', default='experiments/arz_learning_z',
+parser.add_argument('--experiment_dir', default='experiments/arz_learning_z', #burgers_learning_z
                     help="Directory containing experiment_setting.json")
 parser.add_argument('--restore_from', default= None, #"experiments/lwr_learning_z/weights/last.pth.tar",
                     help="Optional, file location containing weights to reload")
-parser.add_argument('--mode', default='train',
+parser.add_argument('--mode', default='test',
                     help="train, test, or train_and_test")
 parser.add_argument('--n_hidden', default=3)
 parser.add_argument('--noise', default=0.2)
+
 parser.add_argument('--test_sample', default=3)  # 100
+
 parser.add_argument('--test_rounds', default=1)  # 3
 parser.add_argument('--nlpd_use_mean', default='True')
 parser.add_argument('--nlpd_n_bands', default=1000)
