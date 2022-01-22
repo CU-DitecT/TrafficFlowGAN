@@ -15,12 +15,14 @@ from src.training import training, test, test_multiple_rounds
 from src.dataset.arz_data import arz_data_loader
 from src.dataset.lwr_data import lwr_data_loader
 from src.dataset.burgers_data import burgers_data_loader
+from src.layers.discriminator import Discriminator
 
 from src.layers.physics import GaussianLWR
 from src.layers.physics import GaussianARZ
 from src.layers.physics import GaussianBurgers
 from src.metrics import instantiate_losses, instantiate_metrics, functionalize_metrics
 
+torch.autograd.set_detect_anomaly(True)
 
 #CUDA support
 if torch.cuda.is_available():
@@ -32,7 +34,7 @@ else:
     logging.info("cuda is not available")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--experiment_dir', default='experiments/burgers_learning_z',
+parser.add_argument('--experiment_dir', default='experiments/arz_learning_z', #burgers_learning_z
                     help="Directory containing experiment_setting.json")
 parser.add_argument('--restore_from', default= None, #"experiments/lwr_learning_z/weights/last.pth.tar",
                     help="Optional, file location containing weights to reload")
@@ -40,8 +42,10 @@ parser.add_argument('--mode', default='train',
                     help="train, test, or train_and_test")
 parser.add_argument('--n_hidden', default=3)
 parser.add_argument('--noise', default=0.2)
+
 parser.add_argument('--test_sample', default=3)  # 100
-parser.add_argument('--test_rounds', default=2)  # 3
+
+parser.add_argument('--test_rounds', default=1)  # 3
 parser.add_argument('--nlpd_use_mean', default='True')
 parser.add_argument('--nlpd_n_bands', default=1000)
 parser.add_argument('--force_overwrite', default=False, action='store_true',
@@ -90,8 +94,9 @@ if __name__ == "__main__":
     if params.data['type'] == 'lwr':
         data_loaded = lwr_data_loader(params.data['loop_number'], params.data['noise_scale'],
                                       params.data['noise_number'], params.data['noise_miu'], params.data['noise_sigma'])
-        train_feature, train_label, train_feature_phy, X, T = data_loaded.load_data()
+        train_feature, train_label, train_feature_phy, x, t,idx = data_loaded.load_data()
         test_feature, Exact_rho = data_loaded.load_test()
+        Exact_u=np.random.normal(params.data['noise_miu'], params.data['noise_sigma'],Exact_rho.shape) #dummy variable 
         test_label = Exact_rho.flatten()[:, None]
         gaussion_noise = np.random.normal(params.data['noise_miu'], params.data['noise_sigma'],
                                           test_label.shape[0]).reshape(-1, 1)
@@ -100,17 +105,18 @@ if __name__ == "__main__":
     elif params.data['type'] == 'arz':
         data_loaded = arz_data_loader(params.data['loop_number'], params.data['noise_scale'],
                                       params.data['noise_number'])
-        train_feature, train_label, train_feature_phy, X, T = data_loaded.load_data()
+        train_feature, train_label, train_feature_phy, x, t,idx = data_loaded.load_data()
         test_feature, Exact_rho, Exact_u = data_loaded.load_test()
         test_label_rho = Exact_rho.flatten()[:, None]
         test_label_u = Exact_u.flatten()[:, None]
-        test_label = np.concatenate([test_label_rho, test_label_u], 1)
+        test_label = np.concatenate([test_label_rho, test_label_u], 1)        
 
     elif params.data['type'] == 'burgers':
         data_loaded = burgers_data_loader(params.data['noise_scale'],params.data['noise_number'], 
                                             params.data['noise_miu'], params.data['noise_sigma'])
-        train_feature, train_label, train_feature_phy, X, T = data_loaded.load_data()
+        train_feature, train_label, train_feature_phy, x, t,idx = data_loaded.load_data()
         test_feature, Exact_rho = data_loaded.load_test()
+        Exact_u=np.random.normal(params.data['noise_miu'], params.data['noise_sigma'],Exact_rho.shape) #dummy variable 
         test_label = Exact_rho.flatten()[:, None]
         gaussion_noise = np.random.normal(params.data['noise_miu'], params.data['noise_sigma'],
                                           test_label.shape[0]).reshape(-1, 1)
@@ -143,7 +149,9 @@ if __name__ == "__main__":
                 "device":device}
 
     # get physics
-    if params.physics["type"] == "lwr":
+    if (params.physics["type"] == "none") | (params.physics["hypers"]["alpha"] == 1):
+        physics = None
+    elif params.physics["type"] == "lwr":
         physics = GaussianLWR(params.physics["meta_params_value"],
                               params.physics["meta_params_trainable"],
                               params.physics["lower_bounds"],
@@ -168,8 +176,6 @@ if __name__ == "__main__":
                               params.physics["hypers"],
                               train=(params.physics["train"] == "True"))
         physics.to(device)
-    elif params.physics["type"] == "none":
-        physics = None
     else:
         raise ValueError("physics type not in searching domain.")
 
@@ -214,7 +220,11 @@ if __name__ == "__main__":
                            z_miu_args, z_sigma_args,
                            z_miu_kwargs, z_sigma_kwargs)
         model.to(device)
-
+    #### discriminator
+    if args.mode == "test":
+        discriminator=None
+    else:
+        discriminator = Discriminator((97,25,2)).to(device)
     # create optimizer
     if params.affine_coupling_layers["optimizer"]["type"] == "Adam":
         optimizer = torch.optim.Adam([p for p in model.parameters() if p.requires_grad == True]
@@ -260,7 +270,7 @@ if __name__ == "__main__":
 
     if (args.mode == "train") or (args.mode == "train_and_test"):
         logging.info("Starting training for {} epoch(s)".format(params.epochs))
-        training(model, optimizer, train_feature, train_label, train_feature_phy,
+        training(model, optimizer,discriminator, train_feature, train_label, train_feature_phy,device,
                  restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
                  physics=physics,
                  physics_optimizer=optimizer_physics,
@@ -273,7 +283,7 @@ if __name__ == "__main__":
 
     if args.mode == "train_and_test":
         logging.info("Starting training for {} epoch(s)".format(params.epochs))
-        training(model, optimizer, train_feature, train_label,
+        training(model, optimizer, discriminator, train_feature, train_label,device,
                  restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
                  physics=physics,
                  physics_optimizer=optimizer_physics,
@@ -298,12 +308,29 @@ if __name__ == "__main__":
                              model_alias=model_alias,
                              restore_from=restore_from, metric_functions=metric_fns, n_samples=args.test_sample,
                              noise=args.noise, args=args)
+        save_path_x = os.path.join(save_dir, model_alias,
+                                        f"x.csv")
+        save_path_t = os.path.join(save_dir, model_alias,
+                                        f"t.csv")
+        np.savetxt(save_path_x, x , delimiter=",")
+        np.savetxt(save_path_t, t , delimiter=",")
+        save_path_Exact_rho = os.path.join(save_dir, model_alias,
+                                        f"Exact_rho.csv")
+        save_path_Exact_u = os.path.join(save_dir, model_alias,
+                                        f"Exact_u.csv")
+        np.savetxt(save_path_Exact_rho, Exact_rho , delimiter=",")
+        np.savetxt(save_path_Exact_u, Exact_u , delimiter=",")
+
+        save_path_idx = os.path.join(save_dir, model_alias,
+                                        f"idx.csv")
+        np.savetxt(save_path_idx, idx , delimiter=",")
         print('train_and_test done')
 
     if args.mode == "test":
         restore_from = os.path.join(args.experiment_dir, "weights/last.path.tar")
         save_dir = os.path.join(args.experiment_dir, "test_result/")
         model_alias = args.experiment_dir.split('/')[-1]
+        
         test_multiple_rounds(model, test_feature, test_label,
                              test_rounds=args.test_rounds,
                              save_dir=save_dir,
@@ -313,4 +340,22 @@ if __name__ == "__main__":
                              n_samples=args.test_sample,
                              noise=args.noise,
                              args=args)
+        
+        save_path_x = os.path.join(save_dir, model_alias,
+                                        f"x.csv")
+        save_path_t = os.path.join(save_dir, model_alias,
+                                        f"t.csv")
+        np.savetxt(save_path_x, x , delimiter=",")
+        np.savetxt(save_path_t, t , delimiter=",")
+
+        save_path_Exact_rho = os.path.join(save_dir, model_alias,
+                                        f"Exact_rho.csv")
+        save_path_Exact_u = os.path.join(save_dir, model_alias,
+                                        f"Exact_u.csv")
+        np.savetxt(save_path_Exact_rho, Exact_rho , delimiter=",")
+        np.savetxt(save_path_Exact_u, Exact_u , delimiter=",")
+
+        save_path_idx = os.path.join(save_dir, model_alias,
+                                        f"idx.csv")
+        np.savetxt(save_path_idx, idx , delimiter=",")
         print('test done')
