@@ -323,7 +323,7 @@ if __name__ == "__main__":
 
         save_path_idx = os.path.join(save_dir, model_alias,
                                         f"idx.csv")
-        np.savetxt(save_path_idx, idx , delimiter=",")
+        np.savetxt(save_path_idx, idx , delimiter=",", fmt="%d")
         print('train_and_test done')
 
     if args.mode == "test":
@@ -357,5 +357,5 @@ if __name__ == "__main__":
 
         save_path_idx = os.path.join(save_dir, model_alias,
                                         f"idx.csv")
-        np.savetxt(save_path_idx, idx , delimiter=",")
+        np.savetxt(save_path_idx, idx , delimiter=",", fmt="%d")
         print('test done')
