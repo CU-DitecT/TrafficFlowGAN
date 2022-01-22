@@ -97,9 +97,7 @@
     },
     "metrics": [
         "rmse",
-        "mae",
-        "kl",
-        "nlpd"
+        "nll"
     ],
     "learning_z": "True"
 }
