@@ -37,7 +37,7 @@ class gan_helper():
 
         self.rho_low_d = rho_low_d
         self.u_low_d = u_low_d
-        self.rho_u_low_d = np.stack((rho_low_d,u_low_d),axis=2)
+        self.rho_u_low_d = np.stack((rho_low_d,u_low_d),axis=0)
         self.X_T_low_d = np.hstack((X_low_d.flatten()[:,None], T_low_d.flatten()[:,None])).astype(np.float32)
 
     def load_ground_truth(self):
@@ -47,6 +47,6 @@ class gan_helper():
     def reshape_to_figure(self, rho, u):
         rho = rho.reshape(-1,self.shape[1]+1)
         u = u.reshape(-1,self.shape[1]+1)
-        rho_u = torch.stack((rho, u), axis=2)
+        rho_u = torch.stack((rho, u), axis=0)
         return rho_u.unsqueeze(0)
 

@@ -91,7 +91,7 @@ def training(model, optimizer,discriminator, train_feature, train_target, train_
             data_loss = loss
             data_loss_np = data_loss.cpu().detach().numpy()
             loss_data_time = time.time()-start_time
-            optimizer.zero_grad()
+
 
             if physics is not None:
                 physics_optimizer.zero_grad()
@@ -108,35 +108,51 @@ def training(model, optimizer,discriminator, train_feature, train_target, train_
                 phy_loss_np = phy_loss.cpu().detach().numpy()
 
             if training_gan is True:
-                Gan_helper = gan_helper(0.02)
-                Ground_truth_figure = Gan_helper.load_ground_truth()
-                rho_test, u_test = model.test(torch.from_numpy(Gan_helper.X_T_low_d).to(device))
-                generator_figure = Gan_helper.reshape_to_figure(rho_test.detach(),u_test.detach())
-                T_real = discriminator.forward(torch.from_numpy(Ground_truth_figure).to(device))
-                T_fake = discriminator.forward(generator_figure)
-                discriminator.optimizer.zero_grad()
-                loss_d = - (torch.log(1-torch.sigmoid(T_real)+1e-8) + torch.log(torch.sigmoid(T_fake)+1e-8))
-                loss_d.backward(retain_graph=True)
-                #optimizer.zero_grad()
-                loss_d_np = loss_d.cpu().detach().numpy()
-                discriminator.optimizer.step()
-                #discriminator.optimizer.zero_grad()
-                del(loss_d)
-                del(T_fake)
-                T_fake = discriminator.forward(generator_figure)
-                loss_g = T_fake
-                loss_g_np = loss_g.cpu().detach().numpy()
-                loss += loss_g.squeeze().squeeze()
+                # train the discriminator
+                for _ in range(2):
+                    discriminator.optimizer.zero_grad()
+                    Gan_helper = gan_helper(0.02)
+                    Ground_truth_figure = Gan_helper.load_ground_truth()
+                    rho_test, u_test = model.test(torch.from_numpy(Gan_helper.X_T_low_d).to(device))
+                    generator_figure = Gan_helper.reshape_to_figure(rho_test.detach(),u_test.detach())
+                    T_real = discriminator.forward(torch.from_numpy(Ground_truth_figure).to(device))
+                    T_fake = discriminator.forward(generator_figure)
+                    loss_d = - (torch.log(1-torch.sigmoid(T_real)+1e-8) + torch.log(torch.sigmoid(T_fake)+1e-8))
+                    loss_d.backward(retain_graph=True)
+                    loss_d_np = loss_d.cpu().detach().numpy()
+                    discriminator.optimizer.step()
+                    del([loss_d, T_real, T_fake, rho_test, u_test, generator_figure])
+
+                # Loss of the generator
+                for _ in range(1):
+                    optimizer.zero_grad()
+                    rho_test, u_test = model.test(torch.from_numpy(Gan_helper.X_T_low_d).to(device))
+                    generator_figure = Gan_helper.reshape_to_figure(rho_test, u_test)
+                    generator_figure_np = generator_figure.cpu().detach().numpy()
+                    T_fake = discriminator.forward(generator_figure)
+                    T_real = discriminator.forward(torch.from_numpy(Ground_truth_figure).to(device))
+                    #loss_g = T_fake
+                    loss_g = torch.square(torch.from_numpy(Ground_truth_figure).to(device)-generator_figure).mean()
+                    T_real_np = T_real.cpu().detach().numpy()
+                    loss_g_np = loss_g.cpu().detach().numpy()
+                    # loss += loss_g.squeeze().squeeze()
+                    # loss += 10*loss_g.squeeze().squeeze()
+
+
+                    loss.backward(retain_graph=True)
+                    optimizer.step()
 
             start_time = time.time()
 
-            loss.backward(retain_graph=True)
-            discriminator.optimizer.step()
+            #loss.backward(retain_graph=True)
+            # discriminator.optimizer.step()
             backward_all_time = time.time() - start_time
 
             start_time = time.time()
             if model.train is True:
-                optimizer.step()
+                #optimizer.step()
+                pass
+
             step_data_time = time.time() - start_time
 
             start_time = time.time()
@@ -209,7 +225,10 @@ def training(model, optimizer,discriminator, train_feature, train_target, train_
             writer.add_scalar("loss/train_data_loss", data_loss_np, epoch+1)
             if physics is not None:
                 writer.add_scalar("loss/train_phy_loss", phy_loss_np, epoch+1)
-
+            if training_gan is True:
+                writer.add_scalar("loss/generator_loss", loss_g_np, epoch + 1)
+                writer.add_scalar("loss/T_real", T_real_np, epoch + 1)
+                writer.add_scalar("loss/discriminator_loss", loss_d_np, epoch + 1)
             # save activation to tensorboard
             for k, v in activation.items():
                 writer.add_histogram(f"activation_train/{k:s}", v, epoch+1)

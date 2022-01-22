@@ -38,7 +38,7 @@ parser.add_argument('--experiment_dir', default='experiments/arz_learning_z', #b
                     help="Directory containing experiment_setting.json")
 parser.add_argument('--restore_from', default= None, #"experiments/lwr_learning_z/weights/last.pth.tar",
                     help="Optional, file location containing weights to reload")
-parser.add_argument('--mode', default='test',
+parser.add_argument('--mode', default='train',
                     help="train, test, or train_and_test")
 parser.add_argument('--n_hidden', default=3)
 parser.add_argument('--noise', default=0.2)
@@ -147,7 +147,9 @@ if __name__ == "__main__":
                 "device":device}
 
     # get physics
-    if params.physics["type"] == "lwr":
+    if (params.physics["type"] == "none") | (params.physics["hypers"]["alpha"] == 1):
+        physics = None
+    elif params.physics["type"] == "lwr":
         physics = GaussianLWR(params.physics["meta_params_value"],
                               params.physics["meta_params_trainable"],
                               params.physics["lower_bounds"],
@@ -172,8 +174,6 @@ if __name__ == "__main__":
                               params.physics["hypers"],
                               train=(params.physics["train"] == "True"))
         physics.to(device)
-    elif params.physics["type"] == "none":
-        physics = None
     else:
         raise ValueError("physics type not in searching domain.")
 
