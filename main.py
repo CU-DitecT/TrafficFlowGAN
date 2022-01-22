@@ -94,8 +94,9 @@ if __name__ == "__main__":
     if params.data['type'] == 'lwr':
         data_loaded = lwr_data_loader(params.data['loop_number'], params.data['noise_scale'],
                                       params.data['noise_number'], params.data['noise_miu'], params.data['noise_sigma'])
-        train_feature, train_label, train_feature_phy, X, T = data_loaded.load_data()
+        train_feature, train_label, train_feature_phy, x, t,idx = data_loaded.load_data()
         test_feature, Exact_rho = data_loaded.load_test()
+        Exact_u=np.random.normal(params.data['noise_miu'], params.data['noise_sigma'],Exact_rho.shape) #dummy variable 
         test_label = Exact_rho.flatten()[:, None]
         gaussion_noise = np.random.normal(params.data['noise_miu'], params.data['noise_sigma'],
                                           test_label.shape[0]).reshape(-1, 1)
@@ -104,17 +105,18 @@ if __name__ == "__main__":
     elif params.data['type'] == 'arz':
         data_loaded = arz_data_loader(params.data['loop_number'], params.data['noise_scale'],
                                       params.data['noise_number'])
-        train_feature, train_label, train_feature_phy, X, T = data_loaded.load_data()
+        train_feature, train_label, train_feature_phy, x, t,idx = data_loaded.load_data()
         test_feature, Exact_rho, Exact_u = data_loaded.load_test()
         test_label_rho = Exact_rho.flatten()[:, None]
         test_label_u = Exact_u.flatten()[:, None]
-        test_label = np.concatenate([test_label_rho, test_label_u], 1)
+        test_label = np.concatenate([test_label_rho, test_label_u], 1)        
 
     elif params.data['type'] == 'burgers':
         data_loaded = burgers_data_loader(params.data['noise_scale'],params.data['noise_number'], 
                                             params.data['noise_miu'], params.data['noise_sigma'])
-        train_feature, train_label, train_feature_phy, X, T = data_loaded.load_data()
+        train_feature, train_label, train_feature_phy, x, t,idx = data_loaded.load_data()
         test_feature, Exact_rho = data_loaded.load_test()
+        Exact_u=np.random.normal(params.data['noise_miu'], params.data['noise_sigma'],Exact_rho.shape) #dummy variable 
         test_label = Exact_rho.flatten()[:, None]
         gaussion_noise = np.random.normal(params.data['noise_miu'], params.data['noise_sigma'],
                                           test_label.shape[0]).reshape(-1, 1)
@@ -306,12 +308,29 @@ if __name__ == "__main__":
                              model_alias=model_alias,
                              restore_from=restore_from, metric_functions=metric_fns, n_samples=args.test_sample,
                              noise=args.noise, args=args)
+        save_path_x = os.path.join(save_dir, model_alias,
+                                        f"x.csv")
+        save_path_t = os.path.join(save_dir, model_alias,
+                                        f"t.csv")
+        np.savetxt(save_path_x, x , delimiter=",")
+        np.savetxt(save_path_t, t , delimiter=",")
+        save_path_Exact_rho = os.path.join(save_dir, model_alias,
+                                        f"Exact_rho.csv")
+        save_path_Exact_u = os.path.join(save_dir, model_alias,
+                                        f"Exact_u.csv")
+        np.savetxt(save_path_Exact_rho, Exact_rho , delimiter=",")
+        np.savetxt(save_path_Exact_u, Exact_u , delimiter=",")
+
+        save_path_idx = os.path.join(save_dir, model_alias,
+                                        f"idx.csv")
+        np.savetxt(save_path_idx, idx , delimiter=",")
         print('train_and_test done')
 
     if args.mode == "test":
         restore_from = os.path.join(args.experiment_dir, "weights/last.path.tar")
         save_dir = os.path.join(args.experiment_dir, "test_result/")
         model_alias = args.experiment_dir.split('/')[-1]
+        
         test_multiple_rounds(model, test_feature, test_label,
                              test_rounds=args.test_rounds,
                              save_dir=save_dir,
@@ -321,4 +340,22 @@ if __name__ == "__main__":
                              n_samples=args.test_sample,
                              noise=args.noise,
                              args=args)
+        
+        save_path_x = os.path.join(save_dir, model_alias,
+                                        f"x.csv")
+        save_path_t = os.path.join(save_dir, model_alias,
+                                        f"t.csv")
+        np.savetxt(save_path_x, x , delimiter=",")
+        np.savetxt(save_path_t, t , delimiter=",")
+
+        save_path_Exact_rho = os.path.join(save_dir, model_alias,
+                                        f"Exact_rho.csv")
+        save_path_Exact_u = os.path.join(save_dir, model_alias,
+                                        f"Exact_u.csv")
+        np.savetxt(save_path_Exact_rho, Exact_rho , delimiter=",")
+        np.savetxt(save_path_Exact_u, Exact_u , delimiter=",")
+
+        save_path_idx = os.path.join(save_dir, model_alias,
+                                        f"idx.csv")
+        np.savetxt(save_path_idx, idx , delimiter=",")
         print('test done')
