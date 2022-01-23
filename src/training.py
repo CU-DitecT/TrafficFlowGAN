@@ -4,10 +4,12 @@ import os
 import src.utils as utils
 
 import matplotlib.pyplot as plt
+import seaborn as sns
 import logging
 import os
 from src.utils import save_dict_to_json, check_exist_and_create, check_and_make_dir
 from torch.utils.tensorboard import SummaryWriter
+from src.dataset.gan_helper import  gan_helper
 
 import time
 
@@ -15,7 +17,7 @@ from tqdm import tqdm
 from scipy.interpolate import griddata
 
 
-def training(model, optimizer, train_feature, train_target, train_feature_phy,
+def training(model, optimizer, discriminator, train_feature, train_target, train_feature_phy, device,
              physics=None,
              physics_optimizer=None,
              restore_from=None,
@@ -25,7 +27,10 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
              save_frequency=1,
              verbose_frequency=1,
              verbose_computation_time=0,
-             save_each_epoch="False"):
+             save_each_epoch="False",
+             training_gan = False,
+             ):
+
     # Initialize tf.Saver instances to save weights during metrics_factory
     X_train = train_feature
     y_train = train_target
@@ -103,9 +108,46 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
                 loss += (1 - physics.hypers["alpha"]) * phy_loss
                 phy_loss_np = phy_loss.cpu().detach().numpy()
 
+            if training_gan is True:
+                # train the discriminator
+                for _ in range(1):
+                    if epoch%3 == 0:
+                        discriminator.optimizer.zero_grad()
+                        Gan_helper = gan_helper(0.02)
+                        Ground_truth_figure = Gan_helper.load_ground_truth()
+                        rho_test, u_test = model.test(torch.from_numpy(Gan_helper.X_T_low_d).to(device))
+                        generator_figure = Gan_helper.reshape_to_figure(rho_test.detach(),u_test.detach())
+                        T_real = discriminator.forward(torch.from_numpy(Ground_truth_figure).to(device))
+                        T_fake = discriminator.forward(generator_figure)
+                        loss_d = - (torch.log(1-torch.sigmoid(T_real)+1e-8) + torch.log(torch.sigmoid(T_fake)+1e-8))
+                        loss_d.backward(retain_graph=True)
+                        loss_d_np = loss_d.cpu().detach().numpy()
+                        discriminator.optimizer.step()
+                        del([loss_d, T_real, T_fake, rho_test, u_test, generator_figure])
+
+                # Loss of the generator
+                for _ in range(1):
+                    optimizer.zero_grad()
+                    rho_test, u_test = model.test(torch.from_numpy(Gan_helper.X_T_low_d).to(device))
+                    generator_figure = Gan_helper.reshape_to_figure(rho_test, u_test)
+                    generator_figure_np = generator_figure.cpu().detach().numpy()
+                    T_fake = discriminator.forward(generator_figure)
+                    T_real = discriminator.forward(torch.from_numpy(Ground_truth_figure).to(device))
+                    loss_g = T_fake
+                    loss_g_mse = torch.square(torch.from_numpy(Ground_truth_figure[:,:,:,[0,8,12,24]]).to(device)-
+                                              generator_figure[:,:,:,[0,8,12,24]]).mean()
+                    T_real_np = T_real.cpu().detach().numpy()
+                    loss_g_np = loss_g.cpu().detach().numpy()
+                    loss += loss_g_mse  + loss_g.squeeze().squeeze()
+                    # loss += 10*loss_g.squeeze().squeeze()
+
+
+                    loss.backward(retain_graph=True)
+                    optimizer.step()
+
             start_time = time.time()
 
-            loss.backward(retain_graph=True)
+            #loss.backward(retain_graph=True)
             backward_all_time = time.time() - start_time
 
             start_time = time.time()
