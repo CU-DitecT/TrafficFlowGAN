@@ -15,6 +15,7 @@ from src.training import training, test, test_multiple_rounds
 from src.dataset.arz_data import arz_data_loader
 from src.dataset.lwr_data import lwr_data_loader
 from src.dataset.burgers_data import burgers_data_loader
+from src.dataset.ngsim_data import ngsim_data_loader
 from src.layers.discriminator import Discriminator
 
 from src.layers.physics import GaussianLWR
@@ -34,7 +35,7 @@ else:
     logging.info("cuda is not available")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--experiment_dir', default='experiments/arz_learning_z', #burgers_learning_z
+parser.add_argument('--experiment_dir', default='experiments/ngsim_learning_z', #burgers_learning_z
                     help="Directory containing experiment_setting.json")
 parser.add_argument('--restore_from', default= None, #"experiments/lwr_learning_z/weights/last.pth.tar",
                     help="Optional, file location containing weights to reload")
@@ -109,7 +110,16 @@ if __name__ == "__main__":
         test_feature, Exact_rho, Exact_u = data_loaded.load_test()
         test_label_rho = Exact_rho.flatten()[:, None]
         test_label_u = Exact_u.flatten()[:, None]
-        test_label = np.concatenate([test_label_rho, test_label_u], 1)        
+        test_label = np.concatenate([test_label_rho, test_label_u], 1)
+
+    elif params.data['type'] == 'ngsim':
+        data_loaded = ngsim_data_loader(params.data['loop_number'], params.data['noise_scale'],
+                                      params.data['noise_number'])
+        train_feature, train_label, train_feature_phy, x, t,idx = data_loaded.load_data()
+        test_feature, Exact_rho, Exact_u = data_loaded.load_test()
+        test_label_rho = Exact_rho.flatten()[:, None]
+        test_label_u = Exact_u.flatten()[:, None]
+        test_label = np.concatenate([test_label_rho, test_label_u], 1)
 
     elif params.data['type'] == 'burgers':
         data_loaded = burgers_data_loader(params.data['noise_scale'],params.data['noise_number'], 
@@ -224,7 +234,7 @@ if __name__ == "__main__":
     if args.mode == "test":
         discriminator=None
     else:
-        discriminator = Discriminator((97,25,2)).to(device)
+        discriminator = Discriminator((96,25,2)).to(device)
     # create optimizer
     if params.affine_coupling_layers["optimizer"]["type"] == "Adam":
         optimizer = torch.optim.Adam([p for p in model.parameters() if p.requires_grad == True]
@@ -357,5 +367,5 @@ if __name__ == "__main__":
 
         save_path_idx = os.path.join(save_dir, model_alias,
                                         f"idx.csv")
-        np.savetxt(save_path_idx, idx , delimiter=",")
+        np.savetxt(save_path_idx, idx , delimiter=",", fmt="%d")
         print('test done')

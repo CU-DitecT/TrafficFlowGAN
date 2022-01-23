@@ -4,6 +4,7 @@ import os
 import src.utils as utils
 
 import matplotlib.pyplot as plt
+import seaborn as sns
 import logging
 import os
 from src.utils import save_dict_to_json, check_exist_and_create, check_and_make_dir
@@ -28,7 +29,7 @@ def training(model, optimizer,discriminator, train_feature, train_target, train_
              verbose_frequency=1,
              verbose_computation_time=0,
              save_each_epoch="False",
-             training_gan = True,
+             training_gan = False,
              ):
     # Initialize tf.Saver instances to save weights during metrics_factory
     X_train = train_feature
@@ -109,19 +110,20 @@ def training(model, optimizer,discriminator, train_feature, train_target, train_
 
             if training_gan is True:
                 # train the discriminator
-                for _ in range(2):
-                    discriminator.optimizer.zero_grad()
-                    Gan_helper = gan_helper(0.02)
-                    Ground_truth_figure = Gan_helper.load_ground_truth()
-                    rho_test, u_test = model.test(torch.from_numpy(Gan_helper.X_T_low_d).to(device))
-                    generator_figure = Gan_helper.reshape_to_figure(rho_test.detach(),u_test.detach())
-                    T_real = discriminator.forward(torch.from_numpy(Ground_truth_figure).to(device))
-                    T_fake = discriminator.forward(generator_figure)
-                    loss_d = - (torch.log(1-torch.sigmoid(T_real)+1e-8) + torch.log(torch.sigmoid(T_fake)+1e-8))
-                    loss_d.backward(retain_graph=True)
-                    loss_d_np = loss_d.cpu().detach().numpy()
-                    discriminator.optimizer.step()
-                    del([loss_d, T_real, T_fake, rho_test, u_test, generator_figure])
+                for _ in range(1):
+                    if epoch%3 == 0:
+                        discriminator.optimizer.zero_grad()
+                        Gan_helper = gan_helper(0.02)
+                        Ground_truth_figure = Gan_helper.load_ground_truth()
+                        rho_test, u_test = model.test(torch.from_numpy(Gan_helper.X_T_low_d).to(device))
+                        generator_figure = Gan_helper.reshape_to_figure(rho_test.detach(),u_test.detach())
+                        T_real = discriminator.forward(torch.from_numpy(Ground_truth_figure).to(device))
+                        T_fake = discriminator.forward(generator_figure)
+                        loss_d = - (torch.log(1-torch.sigmoid(T_real)+1e-8) + torch.log(torch.sigmoid(T_fake)+1e-8))
+                        loss_d.backward(retain_graph=True)
+                        loss_d_np = loss_d.cpu().detach().numpy()
+                        discriminator.optimizer.step()
+                        del([loss_d, T_real, T_fake, rho_test, u_test, generator_figure])
 
                 # Loss of the generator
                 for _ in range(1):
@@ -131,11 +133,12 @@ def training(model, optimizer,discriminator, train_feature, train_target, train_
                     generator_figure_np = generator_figure.cpu().detach().numpy()
                     T_fake = discriminator.forward(generator_figure)
                     T_real = discriminator.forward(torch.from_numpy(Ground_truth_figure).to(device))
-                    #loss_g = T_fake
-                    loss_g = torch.square(torch.from_numpy(Ground_truth_figure).to(device)-generator_figure).mean()
+                    loss_g = T_fake
+                    loss_g_mse = torch.square(torch.from_numpy(Ground_truth_figure[:,:,:,[0,8,12,24]]).to(device)-
+                                              generator_figure[:,:,:,[0,8,12,24]]).mean()
                     T_real_np = T_real.cpu().detach().numpy()
                     loss_g_np = loss_g.cpu().detach().numpy()
-                    # loss += loss_g.squeeze().squeeze()
+                    loss += loss_g_mse  + loss_g.squeeze().squeeze()
                     # loss += 10*loss_g.squeeze().squeeze()
 
 
@@ -145,7 +148,6 @@ def training(model, optimizer,discriminator, train_feature, train_target, train_
             start_time = time.time()
 
             #loss.backward(retain_graph=True)
-            # discriminator.optimizer.step()
             backward_all_time = time.time() - start_time
 
             start_time = time.time()
@@ -358,7 +360,7 @@ def test(model, test_feature, test_target,
            metrics_dict[k] = [func(torch.from_numpy(test_target), torch.from_numpy(test_prediction)).item()]
         print('{}: done'.format(k))
 
-    return metrics_dict, test_prediction, exact_sample_u,exact_sample_rho, samples_mean_u,samples_mean_rho,kl_u,kl_rho
+    return metrics_dict, test_prediction, exact_sample_u,exact_sample_rho, samples_mean_u,samples_mean_rho
     
 
 
@@ -369,7 +371,7 @@ def test_multiple_rounds(model, test_feature,test_label, test_rounds=1,
                          save_dir = None,
                          model_alias = None,                        
                 **kwargs):
-    metrics_dict, test_prediction, exact_sample_u,exact_sample_rho, samples_mean_u,samples_mean_rho, kl_u,kl_rho= test(model, test_feature,test_label,
+    metrics_dict, test_prediction, exact_sample_u,exact_sample_rho, samples_mean_u,samples_mean_rho = test(model, test_feature,test_label,
                                          **kwargs)
     logging.info("Restoring parameters from {}".format(kwargs["restore_from"]))
     if test_rounds > 1:
@@ -397,8 +399,8 @@ def test_multiple_rounds(model, test_feature,test_label, test_rounds=1,
                                         f"targets_test_rho.csv")
     save_path_target_u = os.path.join(save_dir, model_alias,
                                         f"targets_test_u.csv")
-    save_path_kl_rho = os.path.join(save_dir, model_alias,f"kl_rho_test.csv")
-    save_path_kl_u = os.path.join(save_dir, model_alias,f"kl_u_test.csv")
+    # save_path_kl_rho = os.path.join(save_dir, model_alias,f"kl_rho_test.csv")
+    # save_path_kl_u = os.path.join(save_dir, model_alias,f"kl_u_test.csv")
     
     save_dict_to_json(metrics_dict, save_path_metric)
     #np.savetxt(save_path_prediction, test_prediction, delimiter=",")
@@ -410,8 +412,8 @@ def test_multiple_rounds(model, test_feature,test_label, test_rounds=1,
     np.savetxt(save_path_feature, test_feature, delimiter=",")
     np.savetxt(save_path_target_rho, exact_sample_rho, delimiter=",")
     np.savetxt(save_path_target_u, exact_sample_u, delimiter=",")
-    np.savetxt(save_path_kl_rho, kl_rho, delimiter=",")
-    np.savetxt(save_path_kl_u, kl_u, delimiter=",")
+    # np.savetxt(save_path_kl_rho, kl_rho, delimiter=",")
+    # np.savetxt(save_path_kl_u, kl_u, delimiter=",")
 
 
 
