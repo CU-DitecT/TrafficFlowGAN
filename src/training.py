@@ -9,6 +9,7 @@ import logging
 import os
 from src.utils import save_dict_to_json, check_exist_and_create, check_and_make_dir
 from torch.utils.tensorboard import SummaryWriter
+from src.dataset.gan_helper import  gan_helper
 
 import time
 
@@ -16,7 +17,7 @@ from tqdm import tqdm
 from scipy.interpolate import griddata
 
 
-def training(model, optimizer, train_feature, train_target, train_feature_phy,
+def training(model, optimizer, discriminator, train_feature, train_target, train_feature_phy, device,
              physics=None,
              physics_optimizer=None,
              restore_from=None,
@@ -26,13 +27,10 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
              save_frequency=1,
              verbose_frequency=1,
              verbose_computation_time=0,
-<<<<<<< HEAD
              save_each_epoch="False",
              training_gan = False,
              ):
-=======
-             save_each_epoch="False"):
->>>>>>> f4832e7f57272ba76be82ff87ab5cb046b101b73
+
     # Initialize tf.Saver instances to save weights during metrics_factory
     X_train = train_feature
     y_train = train_target
@@ -110,7 +108,6 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
                 loss += (1 - physics.hypers["alpha"]) * phy_loss
                 phy_loss_np = phy_loss.cpu().detach().numpy()
 
-<<<<<<< HEAD
             if training_gan is True:
                 # train the discriminator
                 for _ in range(1):
@@ -151,11 +148,6 @@ def training(model, optimizer, train_feature, train_target, train_feature_phy,
             start_time = time.time()
 
             #loss.backward(retain_graph=True)
-=======
-            start_time = time.time()
-
-            loss.backward(retain_graph=True)
->>>>>>> f4832e7f57272ba76be82ff87ab5cb046b101b73
             backward_all_time = time.time() - start_time
 
             start_time = time.time()
