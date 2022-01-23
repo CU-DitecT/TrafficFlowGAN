@@ -9,8 +9,6 @@ import logging
 import os
 from src.utils import save_dict_to_json, check_exist_and_create, check_and_make_dir
 from torch.utils.tensorboard import SummaryWriter
-from src.dataset.gan_helper import gan_helper
-
 
 import time
 
@@ -18,7 +16,7 @@ from tqdm import tqdm
 from scipy.interpolate import griddata
 
 
-def training(model, optimizer,discriminator, train_feature, train_target, train_feature_phy, device,
+def training(model, optimizer, train_feature, train_target, train_feature_phy,
              physics=None,
              physics_optimizer=None,
              restore_from=None,
@@ -28,9 +26,13 @@ def training(model, optimizer,discriminator, train_feature, train_target, train_
              save_frequency=1,
              verbose_frequency=1,
              verbose_computation_time=0,
+<<<<<<< HEAD
              save_each_epoch="False",
              training_gan = False,
              ):
+=======
+             save_each_epoch="False"):
+>>>>>>> f4832e7f57272ba76be82ff87ab5cb046b101b73
     # Initialize tf.Saver instances to save weights during metrics_factory
     X_train = train_feature
     y_train = train_target
@@ -92,7 +94,7 @@ def training(model, optimizer,discriminator, train_feature, train_target, train_
             data_loss = loss
             data_loss_np = data_loss.cpu().detach().numpy()
             loss_data_time = time.time()-start_time
-
+            optimizer.zero_grad()
 
             if physics is not None:
                 physics_optimizer.zero_grad()
@@ -108,6 +110,7 @@ def training(model, optimizer,discriminator, train_feature, train_target, train_
                 loss += (1 - physics.hypers["alpha"]) * phy_loss
                 phy_loss_np = phy_loss.cpu().detach().numpy()
 
+<<<<<<< HEAD
             if training_gan is True:
                 # train the discriminator
                 for _ in range(1):
@@ -148,13 +151,16 @@ def training(model, optimizer,discriminator, train_feature, train_target, train_
             start_time = time.time()
 
             #loss.backward(retain_graph=True)
+=======
+            start_time = time.time()
+
+            loss.backward(retain_graph=True)
+>>>>>>> f4832e7f57272ba76be82ff87ab5cb046b101b73
             backward_all_time = time.time() - start_time
 
             start_time = time.time()
             if model.train is True:
-                #optimizer.step()
-                pass
-
+                optimizer.step()
             step_data_time = time.time() - start_time
 
             start_time = time.time()
@@ -181,8 +187,6 @@ def training(model, optimizer,discriminator, train_feature, train_target, train_
             del([data_loss, loss])
             if physics is not None:
                 del(phy_loss)
-            if training_gan is True:
-                del(loss_g)
 
             # below is for debug
             # a = activation_eval["x1_eval"].detach().cpu().numpy()
@@ -191,7 +195,7 @@ def training(model, optimizer,discriminator, train_feature, train_target, train_
             # a = 1
 
             # below is to force the iteration # for each epoch to be 1.
-            break
+            # break
 
 
         # logging
@@ -227,10 +231,7 @@ def training(model, optimizer,discriminator, train_feature, train_target, train_
             writer.add_scalar("loss/train_data_loss", data_loss_np, epoch+1)
             if physics is not None:
                 writer.add_scalar("loss/train_phy_loss", phy_loss_np, epoch+1)
-            if training_gan is True:
-                writer.add_scalar("loss/generator_loss", loss_g_np, epoch + 1)
-                writer.add_scalar("loss/T_real", T_real_np, epoch + 1)
-                writer.add_scalar("loss/discriminator_loss", loss_d_np, epoch + 1)
+
             # save activation to tensorboard
             for k, v in activation.items():
                 writer.add_histogram(f"activation_train/{k:s}", v, epoch+1)
@@ -343,7 +344,8 @@ def test(model, test_feature, test_target,
             ###BCE with logit:
             #kl = func(torch.from_numpy(test_target), torch.from_numpy(test_prediction)).item()
             #metrics_dict[k] =[kl]
-
+            
+            
             ###get_KL:
             kl_rho=func(exact_sample_rho, samples_mean_rho)
             key_rho=k+'_rho'

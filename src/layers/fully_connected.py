@@ -11,6 +11,15 @@ class Multiply(nn.Module):
         return self.scale * tensors
 
 
+class Normalization(nn.Module):
+    def __init__(self, mean, std):
+        super(Normalization, self).__init__()
+        self.mean = torch.from_numpy(mean)
+        self.std = torch.from_numpy(std)
+
+    def forward(self, tensors):
+        return (tensors - self.mean) / self.std
+
 def instantiate_activation_function(function_name):
     function_dict = {
         "leaky_relu": nn.LeakyReLU(),
@@ -24,8 +33,10 @@ def instantiate_activation_function(function_name):
 def get_fully_connected_layer(input_dim, output_dim, n_hidden, hidden_dim,
                               activation_type="leaky_relu",
                               last_activation_type="tanh",
-                              device=None):
-    modules = [nn.Linear(input_dim, hidden_dim, device=device)]
+                              device=None,
+                              mean = 0,
+                              std = 1):
+    modules = [ Normalization(mean, std), nn.Linear(input_dim, hidden_dim, device=device)]
     activation = instantiate_activation_function(activation_type)
     if activation is not None:
         modules.append(activation)
