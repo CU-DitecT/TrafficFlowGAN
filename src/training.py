@@ -4,11 +4,14 @@ import os
 import src.utils as utils
 
 import matplotlib.pyplot as plt
+import seaborn as sns
 import logging
 import os
 from src.utils import save_dict_to_json, check_exist_and_create, check_and_make_dir
 from torch.utils.tensorboard import SummaryWriter
+
 from src.dataset.gan_helper import gan_helper
+
 
 
 import time
@@ -17,7 +20,7 @@ from tqdm import tqdm
 from scipy.interpolate import griddata
 
 
-def training(model, optimizer,discriminator, train_feature, train_target, train_feature_phy, device,
+def training(model, optimizer, discriminator, train_feature, train_target, train_feature_phy, device,
              physics=None,
              physics_optimizer=None,
              restore_from=None,
@@ -28,7 +31,7 @@ def training(model, optimizer,discriminator, train_feature, train_target, train_
              verbose_frequency=1,
              verbose_computation_time=0,
              save_each_epoch="False",
-             training_gan = True,
+             training_gan = False,
              ):
     # Initialize tf.Saver instances to save weights during metrics_factory
     X_train = train_feature
@@ -109,25 +112,21 @@ def training(model, optimizer,discriminator, train_feature, train_target, train_
 
             if training_gan is True:
                 # train the discriminator
-                for _ in range(3):
-                    discriminator.optimizer.zero_grad()
-                    Gan_helper = gan_helper(0.02)
-                    Ground_truth_figure = Gan_helper.load_ground_truth()
-                    rho_test, u_test = model.test(torch.from_numpy(Gan_helper.X_T_low_d).to(device))
-                    generator_figure = Gan_helper.reshape_to_figure(rho_test.detach(),u_test.detach())
 
-                    # replace partial ground-truth with prediction
-                    # mask = np.random.choice(np.array([0,1], dtype=np.float32), np.prod(Ground_truth_figure.shape), p=[0.1, 0.9])
-                    # mask = mask.reshape(Ground_truth_figure.shape)
-                    # Ground_truth_figure = Ground_truth_figure*mask + generator_figure.cpu().detach().numpy()*(1-mask)
-
-                    T_real = discriminator.forward(torch.from_numpy(Ground_truth_figure).to(device))
-                    T_fake = discriminator.forward(generator_figure)
-                    loss_d = - (torch.log(1-torch.sigmoid(T_real)+1e-8) + torch.log(torch.sigmoid(T_fake)+1e-8))
-                    loss_d.backward(retain_graph=True)
-                    loss_d_np = loss_d.cpu().detach().numpy()
-                    discriminator.optimizer.step()
-                    del([loss_d, T_real, T_fake, rho_test, u_test, generator_figure])
+                for _ in range(1):
+                    if epoch%3 == 0:
+                        discriminator.optimizer.zero_grad()
+                        Gan_helper = gan_helper(0.02)
+                        Ground_truth_figure = Gan_helper.load_ground_truth()
+                        rho_test, u_test = model.test(torch.from_numpy(Gan_helper.X_T_low_d).to(device))
+                        generator_figure = Gan_helper.reshape_to_figure(rho_test.detach(),u_test.detach())
+                        T_real = discriminator.forward(torch.from_numpy(Ground_truth_figure).to(device))
+                        T_fake = discriminator.forward(generator_figure)
+                        loss_d = - (torch.log(1-torch.sigmoid(T_real)+1e-8) + torch.log(torch.sigmoid(T_fake)+1e-8))
+                        loss_d.backward(retain_graph=True)
+                        loss_d_np = loss_d.cpu().detach().numpy()
+                        discriminator.optimizer.step()
+                        del([loss_d, T_real, T_fake, rho_test, u_test, generator_figure])
 
                 # Loss of the generator
                 for _ in range(1):
@@ -144,6 +143,7 @@ def training(model, optimizer,discriminator, train_feature, train_target, train_
                     T_real_np = T_real.cpu().detach().numpy()
                     loss_g_np = loss_g.cpu().detach().numpy()
                     loss += loss_g.squeeze().squeeze() + loss_g_mse*torch.exp(torch.tensor(-epoch/1000))
+
                     # loss += 10*loss_g.squeeze().squeeze()
 
 
@@ -153,7 +153,9 @@ def training(model, optimizer,discriminator, train_feature, train_target, train_
             start_time = time.time()
 
             #loss.backward(retain_graph=True)
+
             # discriminator.optimizer.step()
+
             backward_all_time = time.time() - start_time
 
             start_time = time.time()
