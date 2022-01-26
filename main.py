@@ -107,6 +107,7 @@ if __name__ == "__main__":
                                       params.data['noise_number'])
         train_feature, train_label, train_feature_phy, X, T = data_loaded.load_data()
         test_feature, Exact_rho, Exact_u = data_loaded.load_test()
+        mean, std = data_loaded.load_bound()
         test_label_rho = Exact_rho.flatten()[:, None]
         test_label_u = Exact_u.flatten()[:, None]
         test_label = np.concatenate([test_label_rho, test_label_u], 1)
@@ -119,6 +120,7 @@ if __name__ == "__main__":
         test_feature, Exact_rho, Exact_u = data_loaded.load_test()
         test_label_rho = Exact_rho.flatten()[:, None]
         test_label_u = Exact_u.flatten()[:, None]
+        mean, std = data_loaded.load_bound()
         test_label = np.concatenate([test_label_rho, test_label_u], 1)
 
 
@@ -221,7 +223,7 @@ if __name__ == "__main__":
                           "device": device}
         model = RealNVP_lz(params.affine_coupling_layers["z_dim"],
                            params.affine_coupling_layers["n_transformation"],
-                           params.affine_coupling_layers["train"],
+                           params.affine_coupling_layers["train"], mean,std,
                            device,
                            s_args,
                            t_args,

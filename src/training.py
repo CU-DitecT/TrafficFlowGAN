@@ -152,10 +152,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
 
             start_time = time.time()
 
-            #loss.backward(retain_graph=True)
-
-            # discriminator.optimizer.step()
-
+            loss.backward(retain_graph=True)
             backward_all_time = time.time() - start_time
 
             start_time = time.time()
