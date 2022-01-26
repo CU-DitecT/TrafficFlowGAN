@@ -16,16 +16,16 @@ def get_mask(z_dim, n_transformation):
 
 
 class RealNVP_lz(nn.Module):
-    def __init__(self, z_dim, n_transformation, train, device, s_args, t_args, s_kwargs, t_kwargs,
+    def __init__(self, z_dim, n_transformation, train, mean, std, device, s_args, t_args, s_kwargs, t_kwargs,
                 z_miu_args,z_sigma_args,z_miu_kwargs,z_sigma_kwargs):
         super(RealNVP_lz, self).__init__()
         mask = get_mask(z_dim, n_transformation)
         mask_torch = torch.from_numpy(mask)
         self.mask = nn.Parameter(mask_torch, requires_grad=False)
-        t = [get_fully_connected_layer(*t_args, **t_kwargs) for _ in range(mask.shape[0])]
-        s = [get_fully_connected_layer(*s_args, **s_kwargs) for _ in range(mask.shape[0])]
-        self.net_miu = torch.nn.ModuleList([get_fully_connected_layer(*z_miu_args, **z_miu_kwargs)])
-        self.net_sigma = torch.nn.ModuleList([get_fully_connected_layer(*z_sigma_args, **z_sigma_kwargs)])
+        t = [get_fully_connected_layer(*t_args, **t_kwargs,mean=mean,std=std) for _ in range(mask.shape[0])]
+        s = [get_fully_connected_layer(*s_args, **s_kwargs,mean=mean,std=std) for _ in range(mask.shape[0])]
+        self.net_miu = torch.nn.ModuleList([get_fully_connected_layer(*z_miu_args, **z_miu_kwargs,mean=mean,std=std,NNz=True)])
+        self.net_sigma = torch.nn.ModuleList([get_fully_connected_layer(*z_sigma_args, **z_sigma_kwargs,mean=mean,std=std,NNz=True)])
 
         # hardcode: force the first s-net to have a tanh activation function
         #s_kwargs["last_activation_type"] = "tanh"
@@ -51,6 +51,10 @@ class RealNVP_lz(nn.Module):
     
     def f(self, x, c):
         # transform from x to z
+        ## hard code for Ngsim normalization
+        self.mean = np.array([2.0758793e-01, 1.0194696e+01])
+        self.std = np.array([7.2862007e-02, 3.8798647e+00])
+        x = (x-self.mean)/self.std
         activation = {"x1": x[:, 0],
                       "x2": x[:, 1],
                       "c_1": c[:,0],
@@ -111,5 +115,7 @@ class RealNVP_lz(nn.Module):
         miu,sigma = self.NN_z(c)
         z_cali = z*sigma + miu
         # log_p = self.prior.log_prob(z, c)
-        x = self.g(z_cali, c)        
+        x = self.g(z_cali, c)
+        ## hard code for Ngsim normalization
+        x = x*torch.from_numpy(np.array([2.0758793e-01, 1.0194696e+01])).to(self.device)+torch.from_numpy(np.array([7.2862007e-02, 3.8798647e+00])).to(self.device)
         return x[:, 0:1], x[:, 1:2]

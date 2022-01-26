@@ -10,11 +10,13 @@ class arz_data_loader():
         self.N_noise = Noise_number 
         self.N_u = 20000
         self.N_loop = Loop_number
-
+    def load_bound(self):
+        return self.mean, self.std
     def load_test(self):
         return self.X_star, self.Exact_rho, self.Exact_u
 
     def load_data(self):
+        add_initial = True
         data = scipy.io.loadmat('data/arz/ARZ_greenshieldSim_epsbell_infer_ring_May14_0.02tau.mat')
 
 
@@ -25,7 +27,9 @@ class arz_data_loader():
 
 
         X, T = np.meshgrid(x,t) # each is 960 by 241
-
+        X_star_initial = np.hstack((X[0,:].flatten()[:,None], T[0,:].flatten()[:,None]))
+        rho_initial = Exact_rho[0,:].flatten()[:,None]
+        u_initial = Exact_u[0, :].flatten()[:, None]
         X_star = np.hstack((X.flatten()[:,None], T.flatten()[:,None])) # hstack is column wise stack, 241*960 (after flatten) by 2
         self.X_star = X_star.astype(np.float32)
         data2 = np.array([0.0]*960)
@@ -40,6 +44,7 @@ class arz_data_loader():
 
         rho_star = Exact_rho.flatten()[:,None] # 241*960 by 1
         u_star = Exact_u.flatten()[:,None] # 241*960 by 1
+
         self.Exact_rho = Exact_rho
         self.Exact_u = Exact_u
 
@@ -77,6 +82,10 @@ class arz_data_loader():
         rho_train = rho_star[idx,:]
         u_train = u_star[idx,:]
 
+        if add_initial:
+            X_rho_train = np.vstack((X_rho_train, X_star_initial))
+            rho_train = np.vstack((rho_train, rho_initial))
+            u_train = np.vstack((u_train, u_initial))
         X_rho_repeat = np.repeat(X_rho_train,self.N_noise,axis = 0)
 
 
@@ -96,5 +105,7 @@ class arz_data_loader():
         rho_u_repeat = rho_u_repeat.astype(np.float32)
         X_star3 = X_star3.astype(np.float32)
         X_rho_u  = np.concatenate((rho_u_repeat, X_rho_repeat),axis=1)
+        self.mean = np.mean(X_rho_u, axis=0)
+        self.std = np.std(X_rho_u, axis=0)
 
         return X_rho_repeat, rho_u_repeat, X_star3, x,t,idx
