@@ -20,10 +20,10 @@ class gan_helper():
         Exact_u = np.real(data['u']).T
         X, T = np.meshgrid(x, t)  # each is 960 by 241
 
-        rho_low_d = np.zeros((self.shape[0] + 1, self.shape[1] + 1))
-        u_low_d = np.zeros((self.shape[0] + 1, self.shape[1] + 1))
-        T_low_d = np.zeros((self.shape[0] + 1, self.shape[1] + 1))
-        X_low_d = np.zeros((self.shape[0] + 1, self.shape[1] + 1))
+        rho_low_d = np.zeros((self.shape[0], self.shape[1] + 1))
+        u_low_d = np.zeros((self.shape[0], self.shape[1] + 1))
+        T_low_d = np.zeros((self.shape[0], self.shape[1] + 1))
+        X_low_d = np.zeros((self.shape[0], self.shape[1] + 1))
         ddx = Exact_rho.shape[0] // self.shape[0]
         ddy = Exact_rho.shape[1] // self.shape[1]
 
@@ -33,7 +33,7 @@ class gan_helper():
                     rho_low_d[i // ddx][j // ddy] = Exact_rho[i][j]
                     u_low_d[i // ddx][j // ddy] = Exact_u[i][j]
                     T_low_d[i // ddx][j // ddy] = T[i][j]
-                    X_low_d[i // ddx][j // ddy] = T[i][j]
+                    X_low_d[i // ddx][j // ddy] = X[i][j]
 
         self.rho_low_d = rho_low_d
         self.u_low_d = u_low_d
