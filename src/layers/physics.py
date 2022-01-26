@@ -95,11 +95,15 @@ class GaussianLWR(torch.nn.Module):
         n_repeat = self.hypers["n_repeat"]
         torch_params = dict()
         for mu_key, sigma_key in meta_pairs:
+
             param_key = mu_key.split("_")[1]
             z = self.randn.sample(sample_shape=(1, n_repeat))[0]
             z = torch.repeat_interleave(z, batch_size, dim=0)
             torch_params[param_key] = torch_meta_params[mu_key] # + torch_meta_params[sigma_key] * z
-            torch_params[param_key].retain_grad()
+
+            ### to ensure requires_grad=True for the parameter
+            if self.meta_params_trainable[mu_key] == "True": 
+                torch_params[param_key].retain_grad()
             #torch_params[param_key] = torch.clamp(torch_params[param_key], self.lower_bounds[mu_key],
             #                                        self.upper_bounds[mu_key])
         return torch_params

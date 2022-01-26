@@ -11,7 +11,7 @@ class arz_data_loader():
         self.N_u = 20000
         self.N_loop = Loop_number
     def load_bound(self):
-        return self.mean, self.std
+        return self.mean.astype(np.float32), self.std.astype(np.float32)
     def load_test(self):
         return self.X_star, self.Exact_rho, self.Exact_u
 
