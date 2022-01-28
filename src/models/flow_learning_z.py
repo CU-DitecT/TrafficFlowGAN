@@ -34,7 +34,7 @@ class RealNVP_lz(nn.Module):
         self.t = torch.nn.ModuleList(t)
         self.s = torch.nn.ModuleList(s)
         self.prior = torch.distributions.MultivariateNormal(torch.zeros(z_dim, device=device),
-                                                            torch.eye(z_dim, device=device)*0.05)
+                                                            torch.eye(z_dim, device=device))
         self.train = (train == "True")
 
     def g(self, z, c):
@@ -117,5 +117,5 @@ class RealNVP_lz(nn.Module):
         # log_p = self.prior.log_prob(z, c)
         x = self.g(z_cali, c)
         ## hard code for Ngsim normalization
-        x = x*torch.from_numpy(np.array([2.0758793e-01, 1.0194696e+01])).to(self.device)+torch.from_numpy(np.array([7.2862007e-02, 3.8798647e+00])).to(self.device)
+        # x = x*torch.from_numpy(np.array([2.0758793e-01, 1.0194696e+01])).to(self.device)+torch.from_numpy(np.array([7.2862007e-02, 3.8798647e+00])).to(self.device)
         return x[:, 0:1], x[:, 1:2]
