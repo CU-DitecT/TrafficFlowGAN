@@ -55,18 +55,26 @@ class RealNVP_lz(nn.Module):
         self.mean = np.array([2.0758793e-01, 1.0194696e+01])
         self.std = np.array([7.2862007e-02, 3.8798647e+00])
         x = (x-self.mean)/self.std
-        activation = {"x1": x[:, 0],
+        if c.shape[1]==2:
+            activation = {"x1": x[:, 0],
                       "x2": x[:, 1],
                       "c_1": c[:,0],
                       "c_2": c[:,1]}
+        else:
+            activation = {"x1": x[:, 0],
+                      "x2": x[:, 1],
+                      "c_1": c[:,0]}
         z = torch.from_numpy(x.astype(np.float32)).float().to(self.device) # z = x
-        c_ = torch.from_numpy(c.astype(np.float32)).float().to(self.device)
+        if torch.is_tensor(c):
+            c_ = c.to(self.device)
+        else:
+            c_ = torch.from_numpy(c.astype(np.float32)).float().to(self.device)
+        
         log_det_J = z.new_zeros(x.shape[0])  # log_det_J = x.new_zeros(x.shape[0])
+
         for i in reversed(range(len(self.t))):
             st_id = np.where(self.mask[i].cpu().numpy()==0)[0][0] # because mask=1 means keep the same value; mask=0 means using affine_coupling_layer
-            z_ = self.mask[i]* z  # z_ = (self.mask[i] * z)
-            
-
+            z_ = self.mask[i]* z  # z_ = (self.mask[i] * z)            
             s = (1 - self.mask[i]) * self.s[i](
                 torch.cat((z_, c_), 1))
             s = torch.clamp(s, min=-5, max=5)
@@ -76,13 +84,12 @@ class RealNVP_lz(nn.Module):
             z = (1 - self.mask[i]) * (z - t) * torch.exp(-s) + z_
             log_det_J -= s.sum(dim=1)
 
-            # save the activation
+            # save the activation            
             activation[f"s{i+1:d}"] = s[:, st_id]
             activation[f"t{i+1:d}"] = t[:, st_id]
             activation[f"z{i:d}_1"] = z[:, 0]
             activation[f"z{i:d}_2"] = z[:, 1]
-
-
+                  
         return z, log_det_J, activation
     
     def NN_z(self, c):
@@ -93,7 +100,10 @@ class RealNVP_lz(nn.Module):
 
     def log_prob(self, x, c):
         z, log_p, activation = self.f(x, c)
-        miu, sigma = self.NN_z(torch.from_numpy(c).to(self.device))
+        if torch.is_tensor(c):
+            miu, sigma = self.NN_z(c.to(self.device))
+        else:
+            miu, sigma = self.NN_z(torch.from_numpy(c).to(self.device))
         L = 0.5*torch.log(torch.tensor([2*math.pi], device=self.device))+torch.log(sigma)+torch.div(torch.mul((z-miu),(z-miu)),2*torch.mul(sigma,sigma))
         L = L[:,0:1]+L[:,1:2]
 
@@ -103,7 +113,10 @@ class RealNVP_lz(nn.Module):
         torch.manual_seed(1)
         z = self.prior.sample((c.shape[0], 1)).to(self.device)
         z = torch.squeeze(z)
-        c_ = torch.from_numpy(c).to(self.device)
+        if torch.is_tensor(c):
+            c_ = c.to(self.device)
+        else:
+            c_ = torch.from_numpy(c).to(self.device)
         # log_p = self.prior.log_prob(z, c)
         x = self.g(z, c_)
         activation = {"x1_eval": x[:, 0].cpu().detach().numpy(),

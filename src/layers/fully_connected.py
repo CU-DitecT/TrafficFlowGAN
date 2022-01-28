@@ -23,9 +23,13 @@ class Normalization(nn.Module):
 
     def forward(self, tensors):
         if self.NNz:
-            norm_tensor = (tensors - self.mean[2:4]) / self.std[2:4]
-        else:
-            norm_tensor = (tensors - torch.cat((torch.tensor([0,0]).to(self.device), self.mean[2:4]),dim=0)) / torch.cat((torch.tensor([1,1]).to(self.device), self.std[2:4]),dim=0)
+            #norm_tensor = (tensors - self.mean[2:4]) / self.std[2:4]
+            norm_tensor = (tensors - self.mean[2:]) / self.std[2:]
+
+        else:             
+            #norm_tensor = (tensors - torch.cat((torch.tensor([0,0]).to(self.device), self.mean[2:4]),dim=0)) / torch.cat((torch.tensor([1,1]).to(self.device), self.std[2:4]),dim=0)
+            norm_tensor = (tensors - torch.cat((torch.tensor([0,0]).to(self.device), self.mean[2:]),dim=0)) / torch.cat((torch.tensor([1,1]).to(self.device), self.std[2:]),dim=0)
+
         return norm_tensor
 
 def instantiate_activation_function(function_name):
