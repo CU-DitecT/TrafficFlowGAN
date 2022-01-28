@@ -59,12 +59,14 @@ class RealNVP_lz(nn.Module):
                       "x2": x[:, 1],
                       "c_1": c[:,0],
                       "c_2": c[:,1]}
-        z = torch.from_numpy(x.astype(np.float32)).to(self.device) # z = x
-        c_ = torch.from_numpy(c).to(self.device)
+        z = torch.from_numpy(x.astype(np.float32)).float().to(self.device) # z = x
+        c_ = torch.from_numpy(c.astype(np.float32)).float().to(self.device)
         log_det_J = z.new_zeros(x.shape[0])  # log_det_J = x.new_zeros(x.shape[0])
         for i in reversed(range(len(self.t))):
             st_id = np.where(self.mask[i].cpu().numpy()==0)[0][0] # because mask=1 means keep the same value; mask=0 means using affine_coupling_layer
             z_ = self.mask[i]* z  # z_ = (self.mask[i] * z)
+            
+
             s = (1 - self.mask[i]) * self.s[i](
                 torch.cat((z_, c_), 1))
             s = torch.clamp(s, min=-5, max=5)

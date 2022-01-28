@@ -14,6 +14,7 @@ from src.utils import set_logger, delete_file_or_folder
 from src.training import training, test, test_multiple_rounds
 from src.dataset.arz_data import arz_data_loader
 from src.dataset.lwr_data import lwr_data_loader
+from src.dataset.lwr_data_with_u import lwr_data_loader_with_u
 from src.dataset.burgers_data import burgers_data_loader
 from src.dataset.ngsim_data import ngsim_data_loader
 from src.layers.discriminator import Discriminator
@@ -35,7 +36,7 @@ else:
     logging.info("cuda is not available")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--experiment_dir', default='experiments/ngsim_learning_z', #burgers_learning_z
+parser.add_argument('--experiment_dir', default='experiments/lwr_with_u_learning_z', #lwr_with_u_learning_z
                     help="Directory containing experiment_setting.json")
 parser.add_argument('--restore_from', default= None, #"experiments/lwr_learning_z/weights/last.pth.tar",
                     help="Optional, file location containing weights to reload")
@@ -94,14 +95,26 @@ if __name__ == "__main__":
     # train_feature, train_label = arz_data.load_data()
     if params.data['type'] == 'lwr':
         data_loaded = lwr_data_loader(params.data['loop_number'], params.data['noise_scale'],
-                                      params.data['noise_number'], params.data['noise_miu'], params.data['noise_sigma'])
+                                      params.data['noise_number'], params.data['noise_miu'], params.data['noise_sigma'])        
         train_feature, train_label, train_feature_phy, x, t,idx = data_loaded.load_data()
         test_feature, Exact_rho = data_loaded.load_test()
+        mean, std = data_loaded.load_bound()
         Exact_u=np.random.normal(params.data['noise_miu'], params.data['noise_sigma'],Exact_rho.shape) #dummy variable 
         test_label = Exact_rho.flatten()[:, None]
         gaussion_noise = np.random.normal(params.data['noise_miu'], params.data['noise_sigma'],
                                           test_label.shape[0]).reshape(-1, 1)
         test_label = np.concatenate([test_label, gaussion_noise], 1)
+    
+    elif params.data['type'] == 'lwr_with_u':       
+        data_loaded = lwr_data_loader_with_u(params.data['loop_number'], params.data['noise_scale'],
+                                      params.data['noise_number'], params.data['noise_miu'], params.data['noise_sigma']) 
+        #1!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!add pmax and umax
+        train_feature, train_label, train_feature_phy, x, t,idx = data_loaded.load_data()
+        test_feature, Exact_rho,Exact_u = data_loaded.load_test()
+        mean, std = data_loaded.load_bound()
+        test_label_rho = Exact_rho.flatten()[:, None]
+        test_label_u = Exact_u.flatten()[:, None]
+        test_label = np.concatenate([test_label_rho, test_label_u], 1)
 
     elif params.data['type'] == 'arz':
         data_loaded = arz_data_loader(params.data['loop_number'], params.data['noise_scale'],

@@ -15,7 +15,7 @@ import time
 
 from tqdm import tqdm
 from scipy.interpolate import griddata
-
+from tqdm import tqdm
 
 def training(model, optimizer, discriminator, train_feature, train_target, train_feature_phy, device,
              physics=None,
@@ -57,7 +57,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
                             }
     Data_loss = []
     np.random.seed(1)
-    for epoch in range(begin_at_epoch, epochs):
+    for epoch in tqdm(range(begin_at_epoch, epochs)):
         # shuffle the data
         idx = np.random.choice(X_train.shape[0], X_train.shape[0], replace=False)
         idx_phy = np.random.choice(X_train_phy.shape[0], X_train_phy.shape[0], replace=False)
