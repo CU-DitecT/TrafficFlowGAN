@@ -29,6 +29,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
              verbose_computation_time=0,
              save_each_epoch="False",
              training_gan = False,
+             training_gan_data = True
              ):
 
     # Initialize tf.Saver instances to save weights during metrics_factory
@@ -57,6 +58,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
                             }
     Data_loss = []
     np.random.seed(1)
+    n_critic=5
     for epoch in tqdm(range(begin_at_epoch, epochs)):
         # shuffle the data
         idx = np.random.choice(X_train.shape[0], X_train.shape[0], replace=False)
@@ -88,8 +90,14 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
             x_batch_phy = X_train_phy[random_idx, :]
             start_time = time.time()
             loss, activation = model.log_prob(y_batch, x_batch)
-            loss = -loss.mean()
-            data_loss = loss
+
+            # loss = -loss.mean()
+            data_loss = torch.tensor(0)
+            if training_gan_data:
+                loss_data_G = model.training_gan(y_batch, x_batch, writer, epoch)
+                # loss += loss_data_G
+                loss = loss_data_G
+                loss_data_G_np = loss_data_G.cpu().detach().numpy()
             data_loss_np = data_loss.cpu().detach().numpy()
             loss_data_time = time.time()-start_time
             optimizer.zero_grad()
@@ -152,7 +160,8 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
 
             start_time = time.time()
             if model.train is True:
-                optimizer.step()
+                if epoch%n_critic == 0:
+                    optimizer.step()
             step_data_time = time.time() - start_time
 
             start_time = time.time()
@@ -179,6 +188,8 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
             del([data_loss, loss])
             if physics is not None:
                 del(phy_loss)
+            if training_gan_data:
+                del(loss_data_G)
 
             # below is for debug
             # a = activation_eval["x1_eval"].detach().cpu().numpy()
@@ -187,7 +198,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
             # a = 1
 
             # below is to force the iteration # for each epoch to be 1.
-            # break
+            break
 
 
         # logging
@@ -221,6 +232,8 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
             # save loss to tensorboard
             writer.add_scalar("loss/train", Data_loss[-1], epoch+1)
             writer.add_scalar("loss/train_data_loss", data_loss_np, epoch+1)
+            if training_gan_data:
+                writer.add_scalar("loss/train_Gan_loss(data)", loss_data_G_np, epoch+1)
             if physics is not None:
                 writer.add_scalar("loss/train_phy_loss", phy_loss_np, epoch+1)
 

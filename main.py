@@ -8,7 +8,7 @@ import torch
 
 from src.utils import Params, save_checkpoint, load_checkpoint
 from src.models.flow import RealNVP
-from src.models.flow_learning_z import RealNVP_lz
+from src.models.nn import RealNVP_lz
 # from src.metrics import instantiate_losses, instantiate_metrics, functionalize_metrics
 from src.utils import set_logger, delete_file_or_folder
 from src.training import training, test, test_multiple_rounds

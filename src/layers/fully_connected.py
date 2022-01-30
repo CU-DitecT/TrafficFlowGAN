@@ -45,7 +45,9 @@ def get_fully_connected_layer(input_dim, output_dim, n_hidden, hidden_dim,
                               mean = 0,
                               std = 1,
                               NNz= False):
-    modules = [ Normalization(mean, std, device,NNz), nn.Linear(input_dim, hidden_dim, device=device)]
+    ## hard code without normalization
+    # modules = [ Normalization(mean, std, device,NNz), nn.Linear(input_dim, hidden_dim, device=device)]
+    modules = [nn.Linear(input_dim, hidden_dim, device=device)]
     activation = instantiate_activation_function(activation_type)
     if activation is not None:
         modules.append(activation)
