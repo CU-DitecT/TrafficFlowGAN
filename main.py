@@ -23,7 +23,7 @@ from src.dataset.ngsim_data import ngsim_data_loader
 from src.layers.discriminator import Discriminator
 
 from src.layers.physics import GaussianLWR
-from src.layers.physics import GaussianARZ
+from src.layers.physics import GaussianARZ, GaussianARZ_FD
 from src.layers.physics import GaussianBurgers
 from src.metrics import instantiate_losses, instantiate_metrics, functionalize_metrics
 
@@ -39,9 +39,9 @@ else:
     logging.info("cuda is not available")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--experiment_dir', default='experiments/lwr_with_u_joint_learning_z', #lwr_with_u_learning_z
+parser.add_argument('--experiment_dir', default='experiments/arz_FD_learning_z', #lwr_with_u_learning_z
                     help="Directory containing experiment_setting.json")
-parser.add_argument('--restore_from', default= None, #"experiments/lwr_learning_z/weights/last.pth.tar",
+parser.add_argument('--restore_from', default= None, #"experiments/lwr_learning_z/weights/last.path.tar",
                     help="Optional, file location containing weights to reload")
 parser.add_argument('--mode', default='train',
                     help="train, test, or train_and_test")
@@ -239,6 +239,15 @@ if __name__ == "__main__":
                               train=(params.physics["train"] == "True"),
                               device=device).to(device)
         physics.to(device)
+    elif params.physics["type"] == "arz_FD":
+        physics = GaussianARZ_FD(params.physics["meta_params_value"],
+                              params.physics["meta_params_trainable"],
+                              params.physics["lower_bounds"],
+                              params.physics["upper_bounds"],
+                              params.physics["hypers"],
+                              train=(params.physics["train"] == "True"),
+                              device=device).to(device)
+        physics.to(device)
     elif params.physics["type"] == "burgers":
         physics = GaussianBurgers(params.physics["meta_params_value"],
                               params.physics["meta_params_trainable"],
@@ -249,6 +258,8 @@ if __name__ == "__main__":
         physics.to(device)
     else:
         raise ValueError("physics type not in searching domain.")
+
+    
 
     # metric_fns = [instantiate_metrics(i) for i in params.metrics]
     metric_fns = [instantiate_metrics(i) for i in params.metrics]
@@ -394,6 +405,12 @@ if __name__ == "__main__":
             optimizer_physics = None
     else:
         optimizer_physics = None
+
+    print('##################################')
+    print(physics.state_dict().keys())
+    print('##################################')
+    print(model.state_dict().keys())
+    print('##################################')
 
     ##########################################
     # Train the model

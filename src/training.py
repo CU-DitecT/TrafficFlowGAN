@@ -10,7 +10,6 @@ import os
 from src.utils import save_dict_to_json, check_exist_and_create, check_and_make_dir
 from torch.utils.tensorboard import SummaryWriter
 from src.dataset.gan_helper import  gan_helper
-
 import time
 
 from tqdm import tqdm
@@ -44,7 +43,14 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
         assert os.path.isfile(restore_from), "restore_from is not a file"
         # restore model
         begin_at_epoch = utils.load_checkpoint(restore_from, model, optimizer, begin_at_epoch)
+        if physics is not None:
+            str_idx = restore_from.index('.tar')
+            restore_from_physics=restore_from[:str_idx] + '.physics' + restore_from[str_idx:]  
+            assert os.path.isfile(restore_from_physics), "restore_from_physics is not a file"
+            utils.load_checkpoint(restore_from_physics, physics,physics_optimizer, begin_at_epoch)
         logging.info(f"Restoring parameters from {restore_from}, restored epoch is {begin_at_epoch:d}")
+
+
     begin_at_epoch = 0
 
     best_loss = 10000
@@ -201,6 +207,13 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
             utils.save_checkpoint({'epoch': epoch + 1,
                                    'state_dict': model.state_dict(),
                                    'optim_dict': optimizer.state_dict()},
+                                  is_best=is_best,
+                                  checkpoint=weights_path,
+                                  save_each_epoch=save_each_epoch)
+            if physics is not None:                
+                utils.save_checkpoint_physics({'epoch': epoch + 1,
+                                   'state_dict': physics.state_dict(),
+                                   'optim_dict': physics_optimizer.state_dict()},
                                   is_best=is_best,
                                   checkpoint=weights_path,
                                   save_each_epoch=save_each_epoch)
