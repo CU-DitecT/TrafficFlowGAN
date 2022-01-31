@@ -221,27 +221,33 @@ class GaussianARZ(torch.nn.Module):
         return torch_params
 
 class FD_learner(torch.nn.Module):
-    def __init__(self, n_input=1,n_hidden=50,n_output=1):
+    def __init__(self, n_input=1,n_output=1,n_layer=2,n_hidden=50):
+        #n_layer: number of hiddent layers
+        #n_hidden: number of neurons at each hidden layer
         super(FD_learner, self).__init__()
-        self.layer1    = torch.nn.Linear(n_input, n_hidden)              # hidden layer
-        self.bn1       = nn.BatchNorm1d(n_hidden, momentum=0.5)          # batch normalization
-        self.layer2    = torch.nn.Linear(n_hidden, n_hidden)
-        self.bn2       = nn.BatchNorm1d(n_hidden,momentum=0.5)
-        self.layer3    = torch.nn.Linear(n_hidden, n_hidden)
-        self.bn3       = nn.BatchNorm1d(n_hidden,momentum=0.5)
+        self.n_layer=n_layer
+        self.layers = nn.ModuleList()
+        self.bn = nn.ModuleList()
+        self.layers.append(nn.Linear(n_input, n_hidden))
+        self.bn.append(nn.BatchNorm1d(n_hidden))
+        for hdim in range(self.n_layer-1):
+            self.layers.append(nn.Linear(n_hidden, n_hidden))
+            self.bn.append(nn.BatchNorm1d(n_hidden))
         self.outputZ   = torch.nn.Linear(n_hidden, n_output) # output layer
     def forward(self, x):
-        x = F.relu(self.bn1(self.layer1(x)))   
-        x = F.relu(self.bn2(self.layer2(x))) 
-        #x = F.relu(self.bn3(self.layer3(x))) 
+        for i, layer in enumerate(self.layers[:-1]):
+            x = layer(x)
+            x = self.bn[i](x)
+            x = F.relu(x)        
         x = self.outputZ(x)                                              # linear output
         return x
 
 class GaussianARZ_FD(torch.nn.Module):
-    def __init__(self, meta_params_value, meta_params_trainable, lower_bounds, upper_bounds, hypers,
-                 train = False,
+    def __init__(self, FD_n_layer, FD_n_hidden,meta_params_value, meta_params_trainable, lower_bounds, upper_bounds, hypers,
+                 train = True,
                  device=None):
         super(GaussianARZ_FD, self).__init__()
+        self.FD_learner=FD_learner(n_layer=FD_n_layer,n_hidden=FD_n_hidden) 
         self.meta_params_trainable = meta_params_trainable
         self.torch_meta_params = torch.nn.ParameterDict()
         for k, v in meta_params_value.items():
@@ -260,7 +266,11 @@ class GaussianARZ_FD(torch.nn.Module):
         self.train = train
         self.device=device
 
-    def caculate_residual(self, rho, u,  x, t, Umax, RHOmax, Tau, model):
+        self.tau=meta_params_value['mu_tau']
+        
+
+    def caculate_residual(self, rho, u,  x, t, Tau, model):
+        #self, rho, u,  x, t, Umax, RHOmax, Tau, model
         Tau=Tau/50.0
 
         drho_dt = torch.autograd.grad(rho, t, torch.ones([t.shape[0], 1], device=self.device).to(model.device),
@@ -273,8 +283,10 @@ class GaussianARZ_FD(torch.nn.Module):
         # drho_dxx = torch.autograd.grad(drho_dx, x, torch.ones([x.shape[0], 1]).to(model.device),
         #                                retain_graph=True, create_graph=True)[0]
 
-        U_eq = Umax*(1 - rho/RHOmax)
-        h = Umax*rho/RHOmax
+        
+        U_eq = self.FD_learner(rho) #Umax*(1 - rho/RHOmax)
+        zero_input=torch.zeros_like(rho,device=self.device)
+        h = self.FD_learner(zero_input) - self.FD_learner(rho) #Umax*rho/RHOmax
 
         ## f_rho
         drho_time_u_dx =drho_dx *u + du_dx*rho
@@ -307,7 +319,8 @@ class GaussianARZ_FD(torch.nn.Module):
         rho, u = model.test(torch.cat((x, t), 1))
         torch_params = self.sample_params(self.torch_meta_params, batch_size)
 
-        f_rho_mean, f_u_mean, drho_dt = self.caculate_residual(rho, u, x, t, torch_params["umax"], torch_params["rhomax"], torch_params["tau"],model)
+        #f_rho_mean, f_u_mean, drho_dt = self.caculate_residual(rho, u, x, t, torch_params["umax"], torch_params["rhomax"], torch_params["tau"],model)
+        f_rho_mean, f_u_mean, drho_dt = self.caculate_residual(rho, u, x, t, self.tau,model)
 
         # Umax_line = np.linspace(0.1,2,50)
         # rhomax_line = np.linspace(0.1,2,50)
@@ -328,7 +341,7 @@ class GaussianARZ_FD(torch.nn.Module):
                          "f_rho_mean": f_rho_mean,
                          "f_u_mean": f_u_mean}
 
-        return loss_mean, torch_params, gradient_hist
+        return loss_mean, torch_params, gradient_hist 
 
     def sample_params(self, torch_meta_params, batch_size):
         meta_pairs = [("mu_rhomax", "sigma_rhomax"),
@@ -338,11 +351,15 @@ class GaussianARZ_FD(torch.nn.Module):
         n_repeat = self.hypers["n_repeat"]
         torch_params = dict()
         for mu_key, sigma_key in meta_pairs:
+
             param_key = mu_key.split("_")[1]
             z = self.randn.sample(sample_shape=(1, n_repeat))[0]
             z = torch.repeat_interleave(z, batch_size, dim=0)
             torch_params[param_key] = torch_meta_params[mu_key] # + torch_meta_params[sigma_key] * z
-            torch_params[param_key].retain_grad()
+
+            ### to ensure requires_grad=True for the parameter
+            if self.meta_params_trainable[mu_key] == "True": 
+                torch_params[param_key].retain_grad()
             #torch_params[param_key] = torch.clamp(torch_params[param_key], self.lower_bounds[mu_key],
             #                                        self.upper_bounds[mu_key])
         return torch_params

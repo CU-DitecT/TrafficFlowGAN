@@ -55,6 +55,7 @@ parser.add_argument('--nlpd_use_mean', default='True')
 parser.add_argument('--nlpd_n_bands', default=1000)
 parser.add_argument('--force_overwrite', default=False, action='store_true',
                     help="For debug. Force to overwrite")
+parser.add_argument('--FD_plot_freq', default=1000)
 
 # Set the random seed for the whole graph for reproductible experiments
 if __name__ == "__main__":
@@ -133,7 +134,7 @@ if __name__ == "__main__":
         test_label_1 = np.concatenate([test_label_rho, gaussion_noise_1], 1)
         test_label_2 = np.concatenate([test_label_u, gaussion_noise_2], 1)
 
-    elif params.data['type'] == 'arz':
+    elif params.data['type'] == 'arz' or 'arz_FD':
         data_loaded = arz_data_loader(params.data['loop_number'], params.data['noise_scale'],
                                       params.data['noise_number'])
         train_feature, train_label, train_feature_phy, x, t,idx = data_loaded.load_data()
@@ -240,7 +241,9 @@ if __name__ == "__main__":
                               device=device).to(device)
         physics.to(device)
     elif params.physics["type"] == "arz_FD":
-        physics = GaussianARZ_FD(params.physics["meta_params_value"],
+        physics = GaussianARZ_FD(params.physics["FD_n_layer"],
+                                 params.physics["FD_n_hidden"],
+                                 params.physics["meta_params_value"],
                               params.physics["meta_params_trainable"],
                               params.physics["lower_bounds"],
                               params.physics["upper_bounds"],
@@ -393,24 +396,32 @@ if __name__ == "__main__":
 
 
     if physics is not None:
-        if params.physics["optimizer"]["type"] == "Adam":
-            optimizer_physics = torch.optim.Adam(
-                [p for p in physics.torch_meta_params.values() if p.requires_grad == True]
-                , **params.physics["optimizer"]["kwargs"])
-        elif params.physics["optimizer"]["type"] == "SGD":
-            optimizer_physics = torch.optim.SGD(
-                [p for p in physics.torch_meta_params.values() if p.requires_grad == True]
-                , **params.physics["optimizer"]["kwargs"])
-        elif params.physics["optimizer"]["type"] == "none":
-            optimizer_physics = None
+        if params.physics["type"] == "arz_FD":
+            if params.physics["optimizer"]["type"] == "Adam":
+                optimizer_physics = torch.optim.Adam(
+                    physics.FD_learner.parameters()
+                    , **params.physics["optimizer"]["kwargs"])
+            elif params.physics["optimizer"]["type"] == "SGD":
+                optimizer_physics = torch.optim.SGD(
+                    physics.FD_learner.parameters()
+                    , **params.physics["optimizer"]["kwargs"])
+            elif params.physics["optimizer"]["type"] == "none":
+                optimizer_physics = None
+
+        else:
+            if params.physics["optimizer"]["type"] == "Adam":
+                optimizer_physics = torch.optim.Adam(
+                    [p for p in physics.torch_meta_params.values() if p.requires_grad == True]
+                    , **params.physics["optimizer"]["kwargs"])
+            elif params.physics["optimizer"]["type"] == "SGD":
+                optimizer_physics = torch.optim.SGD(
+                    [p for p in physics.torch_meta_params.values() if p.requires_grad == True]
+                    , **params.physics["optimizer"]["kwargs"])
+            elif params.physics["optimizer"]["type"] == "none":
+                optimizer_physics = None
     else:
         optimizer_physics = None
 
-    print('##################################')
-    print(physics.state_dict().keys())
-    print('##################################')
-    print(model.state_dict().keys())
-    print('##################################')
 
     ##########################################
     # Train the model
@@ -460,6 +471,98 @@ if __name__ == "__main__":
                      verbose_computation_time = params.verbose_computation_time
                      )
 
+
+            # run test
+            # !While, the used GPU memory may not be released. So it is recommended to run mode=train and then mode=test!#
+            device = torch.device('cpu')
+            logging.info("Before testing, switch to cpu")
+            physics.to(device)
+            model.to(device)
+
+            restore_from = os.path.join(args.experiment_dir, "weights/last.path.tar")
+            save_dir = os.path.join(args.experiment_dir, "test_result/")
+            model_alias = args.experiment_dir.split('/')[-1]
+            test_multiple_rounds(model, test_feature, test_label, test_rounds=args.test_rounds, save_dir=save_dir,
+                                 model_alias=model_alias,
+                                 restore_from=restore_from, metric_functions=metric_fns, n_samples=args.test_sample,
+                                 noise=args.noise, args=args)
+            save_path_x = os.path.join(save_dir, model_alias,
+                                            f"x.csv")
+            save_path_t = os.path.join(save_dir, model_alias,
+                                            f"t.csv")
+            np.savetxt(save_path_x, x , delimiter=",")
+            np.savetxt(save_path_t, t , delimiter=",")
+            save_path_Exact_rho = os.path.join(save_dir, model_alias,
+                                            f"Exact_rho.csv")
+            save_path_Exact_u = os.path.join(save_dir, model_alias,
+                                            f"Exact_u.csv")
+            np.savetxt(save_path_Exact_rho, Exact_rho , delimiter=",")
+            np.savetxt(save_path_Exact_u, Exact_u , delimiter=",")
+
+            save_path_idx = os.path.join(save_dir, model_alias,
+                                            f"idx.csv")
+            np.savetxt(save_path_idx, idx , delimiter=",", fmt="%d")
+            print('train_and_test done')
+
+        if args.mode == "test":
+            restore_from = os.path.join(args.experiment_dir, "weights/last.path.tar")
+            save_dir = os.path.join(args.experiment_dir, "test_result/")
+            model_alias = args.experiment_dir.split('/')[-1]
+        
+            test_multiple_rounds(model, test_feature, test_label,
+                                 test_rounds=args.test_rounds,
+                                 save_dir=save_dir,
+                                 model_alias=model_alias,
+                                 restore_from=restore_from,
+                                 metric_functions=metric_fns,
+                                 n_samples=args.test_sample,
+                                 noise=args.noise,
+                                 args=args)
+        
+            save_path_x = os.path.join(save_dir, model_alias,
+                                            f"x.csv")
+            save_path_t = os.path.join(save_dir, model_alias,
+                                            f"t.csv")
+            np.savetxt(save_path_x, x , delimiter=",")
+            np.savetxt(save_path_t, t , delimiter=",")
+
+            save_path_Exact_rho = os.path.join(save_dir, model_alias,
+                                            f"Exact_rho.csv")
+            save_path_Exact_u = os.path.join(save_dir, model_alias,
+                                            f"Exact_u.csv")
+            np.savetxt(save_path_Exact_rho, Exact_rho , delimiter=",")
+            np.savetxt(save_path_Exact_u, Exact_u , delimiter=",")
+
+            save_path_idx = os.path.join(save_dir, model_alias,
+                                            f"idx.csv")
+            np.savetxt(save_path_idx, idx , delimiter=",", fmt="%d")
+            print('test done')
+    elif params.data['type'] == 'arz_FD':
+        if (args.mode == "train") or (args.mode == "train_and_test"):
+            logging.info("Starting training for {} epoch(s)".format(params.epochs))
+            training(model, optimizer,discriminator, train_feature, train_label, train_feature_phy,device,FD_plot_freq=args.FD_plot_freq,
+                     restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
+                     physics=physics,
+                     physics_optimizer=optimizer_physics,
+                     experiment_dir=args.experiment_dir,
+                     save_frequency=params.save_frequency,
+                     verbose_frequency=params.verbose_frequency,
+                     save_each_epoch=params.save_each_epoch,
+                     verbose_computation_time = params.verbose_computation_time
+                     )
+
+        if args.mode == "train_and_test":
+            logging.info("Starting training for {} epoch(s)".format(params.epochs))
+            training(model, optimizer, discriminator, train_feature, train_label,device,FD_plot_freq=args.FD_plot_freq,
+                     restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
+                     physics=physics,
+                     physics_optimizer=optimizer_physics,
+                     experiment_dir=args.experiment_dir,
+                     save_frequency=params.save_frequency,
+                     verbose_frequency=params.verbose_frequency,
+                     save_each_epoch=params.save_each_epoch,
+                     verbose_computation_time=params.verbose_computation_time
+                     )
 
             # run test
             # !While, the used GPU memory may not be released. So it is recommended to run mode=train and then mode=test!#

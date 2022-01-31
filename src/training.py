@@ -16,9 +16,25 @@ from tqdm import tqdm
 from scipy.interpolate import griddata
 from tqdm import tqdm
 
+import sys
+
+def FD_plot(FD_learner,FD_result_path,epoch):
+    FD_learner.eval()
+    rho_input=torch.arange(start=0.0,end=1.2,step=0.01).reshape((-1,1))
+    FD_output=FD_learner(rho_input)
+    plt.plot(rho_input.detach().numpy(),FD_output.detach().numpy())
+    plt.xlabel('rho')
+    plt.title('FD learner after {} epochs'.format(epoch))
+    plt.savefig(FD_result_path+'FD_after_{}_epoch'.format(epoch),
+                dpi=300,
+                bbox_inches="tight")
+    plt.close()
+    FD_learner.train()
+
 def training(model, optimizer, discriminator, train_feature, train_target, train_feature_phy, device,
              physics=None,
              physics_optimizer=None,
+             FD_plot_freq=None,
              restore_from=None,
              epochs=1000,
              batch_size=None,
@@ -38,6 +54,9 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
     writer = SummaryWriter(os.path.join(experiment_dir, "summary"))
     weights_path = os.path.join(experiment_dir, "weights")
     check_exist_and_create(weights_path)
+    if FD_plot_freq is not None:
+        FD_result_path=os.path.join(experiment_dir, "FD_result/")
+        check_exist_and_create(FD_result_path)
 
     if restore_from is not None:
         assert os.path.isfile(restore_from), "restore_from is not a file"
@@ -64,6 +83,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
     Data_loss = []
     np.random.seed(1)
     for epoch in tqdm(range(begin_at_epoch, epochs)):
+        
         # shuffle the data
         idx = np.random.choice(X_train.shape[0], X_train.shape[0], replace=False)
         idx_phy = np.random.choice(X_train_phy.shape[0], X_train_phy.shape[0], replace=False)
@@ -259,6 +279,10 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
                 for k, v in physics.torch_meta_params.items():
                     if physics.meta_params_trainable[k] == "True":
                         writer.add_scalar(f"physics_grad/dLoss_d{k:s}", v.grad, epoch + 1)
+        if FD_plot_freq is not None:
+            if (epoch % FD_plot_freq == 0) | (epoch == begin_at_epoch + epochs - 1) | (epoch == 0):
+                FD_plot(physics.FD_learner,FD_result_path,epoch)
+
 
 
     # plot the abnormal training data loss
