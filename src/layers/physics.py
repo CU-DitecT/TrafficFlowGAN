@@ -230,7 +230,7 @@ class FD_learner(torch.nn.Module):
         self.bn = nn.ModuleList()
         self.layers.append(nn.Linear(n_input, n_hidden))
         self.bn.append(nn.BatchNorm1d(n_hidden))
-        for hdim in range(self.n_layer-1):
+        for hdim in range(self.n_layer):
             self.layers.append(nn.Linear(n_hidden, n_hidden))
             self.bn.append(nn.BatchNorm1d(n_hidden))
         self.outputZ   = torch.nn.Linear(n_hidden, n_output) # output layer
