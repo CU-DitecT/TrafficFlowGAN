@@ -22,7 +22,7 @@ def FD_plot(FD_learner,FD_result_path,epoch):
     FD_learner.eval()
     rho_input=torch.arange(start=0.0,end=1.2,step=0.01).reshape((-1,1))
     FD_output=FD_learner(rho_input)
-    plt.plot(rho_input.detach().numpy(),FD_output.detach().numpy())
+    plt.plot(rho_input.cpu().detach().numpy(),FD_output.cpu().detach().numpy())
     plt.xlabel('rho')
     plt.title('FD learner after {} epochs'.format(epoch))
     plt.savefig(FD_result_path+'FD_after_{}_epoch'.format(epoch),
@@ -173,7 +173,8 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
 
             start_time = time.time()
 
-            loss.backward(retain_graph=True)
+            #loss.backward(retain_graph=True)
+            loss.backward()
             backward_all_time = time.time() - start_time
 
             start_time = time.time()
