@@ -12,6 +12,8 @@ class lwr_data_loader():
         self.N_loop = Loop_number
         self.miu = noise_miu
         self.sigma = noise_sigma # for generating gaussion noise
+    def load_bound(self):
+        return self.mean, self.std
     def load_test(self):
         return self.X_star, self.Exact_rho
     def load_data(self):
@@ -87,7 +89,13 @@ class lwr_data_loader():
         gaussion_noise = np.random.normal(self.miu,self.sigma,rho_train_repeat.shape[0]).reshape(-1,1)
         rho_noisie_repeat  = np.concatenate((rho_train_repeat, gaussion_noise),axis=1)
 
-        return X_rho_repeat.astype(np.float32), rho_noisie_repeat.astype(np.float32),X_star3.astype(np.float32), X,T
+
+        X_rho_u  = np.concatenate((rho_noisie_repeat, X_rho_repeat),axis=1)
+        self.mean = np.mean(X_rho_u, axis=0)
+        self.std = np.std(X_rho_u, axis=0)
+
+        return X_rho_repeat.astype(np.float32), rho_noisie_repeat.astype(np.float32),X_star3.astype(np.float32), x,t,idx
+
 
 
 

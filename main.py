@@ -12,14 +12,18 @@ from src.models.flow_learning_z import RealNVP_lz
 # from src.metrics import instantiate_losses, instantiate_metrics, functionalize_metrics
 from src.utils import set_logger, delete_file_or_folder
 from src.training import training, test, test_multiple_rounds
+from src.joint_FD_training import joint_training #, joint_test, joint_test_multiple_rounds
+
 from src.dataset.arz_data import arz_data_loader
 from src.dataset.lwr_data import lwr_data_loader
+from src.dataset.lwr_data_with_u import lwr_data_loader_with_u
+from src.dataset.lwr_data_with_u_joint import lwr_data_loader_with_u_joint
 from src.dataset.burgers_data import burgers_data_loader
 from src.dataset.ngsim_data import ngsim_data_loader
 from src.layers.discriminator import Discriminator
 
 from src.layers.physics import GaussianLWR
-from src.layers.physics import GaussianARZ
+from src.layers.physics import GaussianARZ, GaussianARZ_FD
 from src.layers.physics import GaussianBurgers
 from src.metrics import instantiate_losses, instantiate_metrics, functionalize_metrics
 
@@ -35,9 +39,9 @@ else:
     logging.info("cuda is not available")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--experiment_dir', default='experiments/ngsim_learning_z', #burgers_learning_z
+parser.add_argument('--experiment_dir', default='experiments/arz_FD_learning_z', #lwr_with_u_learning_z
                     help="Directory containing experiment_setting.json")
-parser.add_argument('--restore_from', default= None, #"experiments/lwr_learning_z/weights/last.pth.tar",
+parser.add_argument('--restore_from', default= None, #"experiments/lwr_learning_z/weights/last.path.tar",
                     help="Optional, file location containing weights to reload")
 parser.add_argument('--mode', default='train',
                     help="train, test, or train_and_test")
@@ -51,6 +55,7 @@ parser.add_argument('--nlpd_use_mean', default='True')
 parser.add_argument('--nlpd_n_bands', default=1000)
 parser.add_argument('--force_overwrite', default=False, action='store_true',
                     help="For debug. Force to overwrite")
+parser.add_argument('--FD_plot_freq', default=1000)
 
 # Set the random seed for the whole graph for reproductible experiments
 if __name__ == "__main__":
@@ -94,15 +99,44 @@ if __name__ == "__main__":
     # train_feature, train_label = arz_data.load_data()
     if params.data['type'] == 'lwr':
         data_loaded = lwr_data_loader(params.data['loop_number'], params.data['noise_scale'],
-                                      params.data['noise_number'], params.data['noise_miu'], params.data['noise_sigma'])
-        train_feature, train_label, train_feature_phy, X, T = data_loaded.load_data()
+
+                                      params.data['noise_number'], params.data['noise_miu'], params.data['noise_sigma'])        
+        train_feature, train_label, train_feature_phy, x, t,idx = data_loaded.load_data()
         test_feature, Exact_rho = data_loaded.load_test()
+        mean, std = data_loaded.load_bound()
+        Exact_u=np.random.normal(params.data['noise_miu'], params.data['noise_sigma'],Exact_rho.shape) #dummy variable 
+
         test_label = Exact_rho.flatten()[:, None]
         gaussion_noise = np.random.normal(params.data['noise_miu'], params.data['noise_sigma'],
                                           test_label.shape[0]).reshape(-1, 1)
         test_label = np.concatenate([test_label, gaussion_noise], 1)
+    
+    elif params.data['type'] == 'lwr_with_u':       
+        data_loaded = lwr_data_loader_with_u(params.data['loop_number'], params.data['noise_scale'],
+                                      params.data['noise_number'], params.data['noise_miu'], params.data['noise_sigma']) 
+        train_feature, train_label, train_feature_phy, x, t,idx = data_loaded.load_data()
+        test_feature, Exact_rho,Exact_u = data_loaded.load_test()
+        mean, std = data_loaded.load_bound()
+        test_label_rho = Exact_rho.flatten()[:, None]
+        test_label_u = Exact_u.flatten()[:, None]
+        test_label = np.concatenate([test_label_rho, test_label_u], 1)
 
-    elif params.data['type'] == 'arz':
+    elif params.data['type'] == 'lwr_with_u_joint':       
+        data_loaded = lwr_data_loader_with_u_joint(params.data['loop_number'], params.data['noise_scale'],
+                                      params.data['noise_number'], params.data['noise_miu'], params.data['noise_sigma']) 
+        train_feature, train_label,train_label_2, train_feature_phy, x, t,idx = data_loaded.load_data()
+        mean, std ,mean_2, std_2= data_loaded.load_bound()
+        test_feature, Exact_rho,Exact_u = data_loaded.load_test()
+        test_label_rho = Exact_rho.flatten()[:, None]
+        test_label_u = Exact_u.flatten()[:, None]
+        gaussion_noise_1 = np.random.normal(params.data['noise_miu'], params.data['noise_sigma'],
+                                          test_label_rho.shape[0]).reshape(-1, 1)
+        gaussion_noise_2 = np.random.normal(params.data['noise_miu'], params.data['noise_sigma'],
+                                          test_label_u.shape[0]).reshape(-1, 1)
+        test_label_1 = np.concatenate([test_label_rho, gaussion_noise_1], 1)
+        test_label_2 = np.concatenate([test_label_u, gaussion_noise_2], 1)
+
+    elif params.data['type'] == 'arz' or 'arz_FD':
         data_loaded = arz_data_loader(params.data['loop_number'], params.data['noise_scale'],
                                       params.data['noise_number'])
         train_feature, train_label, train_feature_phy, X, T = data_loaded.load_data()
@@ -141,25 +175,54 @@ if __name__ == "__main__":
     logging.info("Creating the model...")
 
     # create model
-    input_dim = params.affine_coupling_layers["z_dim"] + params.affine_coupling_layers["c_dim"]
+    if params.data['type'] == 'lwr_with_u_joint':   
+        input_dim = params.affine_coupling_layers["z_dim"] + params.affine_coupling_layers["c_dim"]
+        input_dim_2 = params.affine_coupling_layers["z_dim"] + params.affine_coupling_layers["c_dim_2"]
 
-    output_dim = params.affine_coupling_layers["z_dim"]
-    s_args = (input_dim, output_dim,
-              params.affine_coupling_layers["s_net"]["n_hidden"],
-              params.affine_coupling_layers["s_net"]["hidden_dim"])
+        output_dim = params.affine_coupling_layers["z_dim"]
+        s_args = (input_dim, output_dim,
+                  params.affine_coupling_layers["s_net"]["n_hidden"],
+                  params.affine_coupling_layers["s_net"]["hidden_dim"])
 
-    t_args = (input_dim, output_dim,
-              params.affine_coupling_layers["t_net"]["n_hidden"],
-              params.affine_coupling_layers["t_net"]["hidden_dim"])
+        t_args = (input_dim, output_dim,
+                  params.affine_coupling_layers["t_net"]["n_hidden"],
+                  params.affine_coupling_layers["t_net"]["hidden_dim"])
+        s_args_2 = (input_dim_2, output_dim,
+                  params.affine_coupling_layers["s_net"]["n_hidden"],
+                  params.affine_coupling_layers["s_net"]["hidden_dim"])
 
-    s_kwargs = {"activation_type": params.affine_coupling_layers["s_net"]["activation_type"],
-                "last_activation_type": params.affine_coupling_layers["s_net"]["last_activation_type"],
-                "device":device}
+        t_args_2 = (input_dim_2, output_dim,
+                  params.affine_coupling_layers["t_net"]["n_hidden"],
+                  params.affine_coupling_layers["t_net"]["hidden_dim"])
 
-    t_kwargs = {"activation_type": params.affine_coupling_layers["t_net"]["activation_type"],
-                "last_activation_type": params.affine_coupling_layers["t_net"]["last_activation_type"],
-                "device":device}
+        s_kwargs = {"activation_type": params.affine_coupling_layers["s_net"]["activation_type"],
+                    "last_activation_type": params.affine_coupling_layers["s_net"]["last_activation_type"],
+                    "device":device}
 
+        t_kwargs = {"activation_type": params.affine_coupling_layers["t_net"]["activation_type"],
+                    "last_activation_type": params.affine_coupling_layers["t_net"]["last_activation_type"],
+                    "device":device}
+
+    else:
+        input_dim = params.affine_coupling_layers["z_dim"] + params.affine_coupling_layers["c_dim"]
+
+        output_dim = params.affine_coupling_layers["z_dim"]
+        s_args = (input_dim, output_dim,
+                  params.affine_coupling_layers["s_net"]["n_hidden"],
+                  params.affine_coupling_layers["s_net"]["hidden_dim"])
+
+        t_args = (input_dim, output_dim,
+                  params.affine_coupling_layers["t_net"]["n_hidden"],
+                  params.affine_coupling_layers["t_net"]["hidden_dim"])
+
+        s_kwargs = {"activation_type": params.affine_coupling_layers["s_net"]["activation_type"],
+                    "last_activation_type": params.affine_coupling_layers["s_net"]["last_activation_type"],
+                    "device":device}
+
+        t_kwargs = {"activation_type": params.affine_coupling_layers["t_net"]["activation_type"],
+                    "last_activation_type": params.affine_coupling_layers["t_net"]["last_activation_type"],
+                    "device":device}
+    
     # get physics
     if (params.physics["type"] == "none") | (params.physics["hypers"]["alpha"] == 1):
         physics = None
@@ -180,6 +243,17 @@ if __name__ == "__main__":
                               train=(params.physics["train"] == "True"),
                               device=device).to(device)
         physics.to(device)
+    elif params.physics["type"] == "arz_FD":
+        physics = GaussianARZ_FD(params.physics["FD_n_layer"],
+                                 params.physics["FD_n_hidden"],
+                                 params.physics["meta_params_value"],
+                              params.physics["meta_params_trainable"],
+                              params.physics["lower_bounds"],
+                              params.physics["upper_bounds"],
+                              params.physics["hypers"],
+                              train=(params.physics["train"] == "True"),
+                              device=device).to(device)
+        physics.to(device)
     elif params.physics["type"] == "burgers":
         physics = GaussianBurgers(params.physics["meta_params_value"],
                               params.physics["meta_params_trainable"],
@@ -191,72 +265,166 @@ if __name__ == "__main__":
     else:
         raise ValueError("physics type not in searching domain.")
 
+    
+
     # metric_fns = [instantiate_metrics(i) for i in params.metrics]
     metric_fns = [instantiate_metrics(i) for i in params.metrics]
     metric_fns = dict(zip(params.metrics, metric_fns))
-    if params.learning_z == "False":
-        model = RealNVP(params.affine_coupling_layers["z_dim"],
-                        params.affine_coupling_layers["n_transformation"],
-                        params.affine_coupling_layers["train"],
-                        device,
-                        s_args,
-                        t_args,
-                        s_kwargs,
-                        t_kwargs)
-        model.to(device)
-    if params.learning_z == "True":
-        input_dim_z = params.affine_coupling_layers["c_dim"]
-        output_dim_z = params.affine_coupling_layers["z_dim"]
-        z_miu_args = (input_dim_z, output_dim_z,
-                      params.affine_coupling_layers["z_miu_net"]["n_hidden"],
-                      params.affine_coupling_layers["z_miu_net"]["hidden_dim"])
+    if params.data['type'] == 'lwr_with_u_joint':
+        if params.learning_z == "False":
+            model_1 = RealNVP(params.affine_coupling_layers["z_dim"],
+                            params.affine_coupling_layers["n_transformation"],
+                            params.affine_coupling_layers["train"],
+                            device,
+                            s_args,
+                            t_args,
+                            s_kwargs,
+                            t_kwargs)
+            model_1.to(device)
+            model_2 = RealNVP(params.affine_coupling_layers["z_dim"],
+                            params.affine_coupling_layers["n_transformation"],
+                            params.affine_coupling_layers["train"],
+                            device,
+                            s_args_2,
+                            t_args_2,
+                            s_kwargs,
+                            t_kwargs)
+            model_2.to(device)
 
-        z_sigma_args = (input_dim_z, output_dim_z,
-                        params.affine_coupling_layers["z_sigma_net"]["n_hidden"],
-                        params.affine_coupling_layers["z_sigma_net"]["hidden_dim"])
-        z_miu_kwargs = {"activation_type": params.affine_coupling_layers["z_miu_net"]["activation_type"],
-                        "last_activation_type": params.affine_coupling_layers["z_miu_net"]["last_activation_type"],
-                        "device":device}
+        if params.learning_z == "True":
+            input_dim_z = params.affine_coupling_layers["c_dim"]
+            input_dim_z_2 = params.affine_coupling_layers["c_dim_2"]
 
-        z_sigma_kwargs = {"activation_type": params.affine_coupling_layers["z_sigma_net"]["activation_type"],
-                          "last_activation_type": params.affine_coupling_layers["z_sigma_net"]["last_activation_type"],
-                          "device": device}
-        model = RealNVP_lz(params.affine_coupling_layers["z_dim"],
-                           params.affine_coupling_layers["n_transformation"],
-                           params.affine_coupling_layers["train"], mean,std,
-                           device,
-                           s_args,
-                           t_args,
-                           s_kwargs,
-                           t_kwargs,
-                           z_miu_args, z_sigma_args,
-                           z_miu_kwargs, z_sigma_kwargs)
-        model.to(device)
+            output_dim_z = params.affine_coupling_layers["z_dim"]
+            z_miu_args = (input_dim_z, output_dim_z,
+                          params.affine_coupling_layers["z_miu_net"]["n_hidden"],
+                          params.affine_coupling_layers["z_miu_net"]["hidden_dim"])
+
+            z_sigma_args = (input_dim_z, output_dim_z,
+                            params.affine_coupling_layers["z_sigma_net"]["n_hidden"],
+                            params.affine_coupling_layers["z_sigma_net"]["hidden_dim"])
+            z_miu_args_2 = (input_dim_z_2, output_dim_z,
+                          params.affine_coupling_layers["z_miu_net"]["n_hidden"],
+                          params.affine_coupling_layers["z_miu_net"]["hidden_dim"])
+
+            z_sigma_args_2 = (input_dim_z_2, output_dim_z,
+                            params.affine_coupling_layers["z_sigma_net"]["n_hidden"],
+                            params.affine_coupling_layers["z_sigma_net"]["hidden_dim"])
+            z_miu_kwargs = {"activation_type": params.affine_coupling_layers["z_miu_net"]["activation_type"],
+                            "last_activation_type": params.affine_coupling_layers["z_miu_net"]["last_activation_type"],
+                            "device":device}
+
+            z_sigma_kwargs = {"activation_type": params.affine_coupling_layers["z_sigma_net"]["activation_type"],
+                              "last_activation_type": params.affine_coupling_layers["z_sigma_net"]["last_activation_type"],
+                              "device": device}
+            model_1 = RealNVP_lz(params.affine_coupling_layers["z_dim"],
+                               params.affine_coupling_layers["n_transformation"],
+                               params.affine_coupling_layers["train"], mean,std,
+                               device,
+                               s_args,
+                               t_args,
+                               s_kwargs,
+                               t_kwargs,
+                               z_miu_args, z_sigma_args,
+                               z_miu_kwargs, z_sigma_kwargs)
+            model_1.to(device)
+            model_2 = RealNVP_lz(params.affine_coupling_layers["z_dim"],
+                               params.affine_coupling_layers["n_transformation"],
+                               params.affine_coupling_layers["train"], mean_2,std_2,
+                               device,
+                               s_args_2,
+                               t_args_2,
+                               s_kwargs,
+                               t_kwargs,
+                               z_miu_args_2, z_sigma_args_2,
+                               z_miu_kwargs, z_sigma_kwargs)
+            model_2.to(device)
+    else:
+        if params.learning_z == "False":
+            model = RealNVP(params.affine_coupling_layers["z_dim"],
+                            params.affine_coupling_layers["n_transformation"],
+                            params.affine_coupling_layers["train"],
+                            device,
+                            s_args,
+                            t_args,
+                            s_kwargs,
+                            t_kwargs)
+            model.to(device)
+        if params.learning_z == "True":
+            input_dim_z = params.affine_coupling_layers["c_dim"]
+            output_dim_z = params.affine_coupling_layers["z_dim"]
+            z_miu_args = (input_dim_z, output_dim_z,
+                          params.affine_coupling_layers["z_miu_net"]["n_hidden"],
+                          params.affine_coupling_layers["z_miu_net"]["hidden_dim"])
+
+            z_sigma_args = (input_dim_z, output_dim_z,
+                            params.affine_coupling_layers["z_sigma_net"]["n_hidden"],
+                            params.affine_coupling_layers["z_sigma_net"]["hidden_dim"])
+            z_miu_kwargs = {"activation_type": params.affine_coupling_layers["z_miu_net"]["activation_type"],
+                            "last_activation_type": params.affine_coupling_layers["z_miu_net"]["last_activation_type"],
+                            "device":device}
+
+            z_sigma_kwargs = {"activation_type": params.affine_coupling_layers["z_sigma_net"]["activation_type"],
+                              "last_activation_type": params.affine_coupling_layers["z_sigma_net"]["last_activation_type"],
+                              "device": device}
+            model = RealNVP_lz(params.affine_coupling_layers["z_dim"],
+                               params.affine_coupling_layers["n_transformation"],
+                               params.affine_coupling_layers["train"], mean,std,
+                               device,
+                               s_args,
+                               t_args,
+                               s_kwargs,
+                               t_kwargs,
+                               z_miu_args, z_sigma_args,
+                               z_miu_kwargs, z_sigma_kwargs)
+            model.to(device)
     #### discriminator
     if args.mode == "test":
         discriminator=None
     else:
         discriminator = Discriminator((96,25,2)).to(device)
     # create optimizer
-    if params.affine_coupling_layers["optimizer"]["type"] == "Adam":
-        optimizer = torch.optim.Adam([p for p in model.parameters() if p.requires_grad == True]
-                                     , **params.affine_coupling_layers["optimizer"]["kwargs"])
+    if params.data['type'] == 'lwr_with_u_joint':
+        if params.affine_coupling_layers["optimizer"]["type"] == "Adam":
+            optimizer = torch.optim.Adam([p for p in model_1.parameters() if p.requires_grad == True] +[p for p in model_2.parameters() if p.requires_grad == True]
+                                         , **params.affine_coupling_layers["optimizer"]["kwargs"])
+        else:
+            raise ValueError("optimizer not in searching domain.")
     else:
-        raise ValueError("optimizer not in searching domain.")
+        if params.affine_coupling_layers["optimizer"]["type"] == "Adam":
+            optimizer = torch.optim.Adam([p for p in model.parameters() if p.requires_grad == True]
+                                         , **params.affine_coupling_layers["optimizer"]["kwargs"])
+        else:
+            raise ValueError("optimizer not in searching domain.")
+
 
     if physics is not None:
-        if params.physics["optimizer"]["type"] == "Adam":
-            optimizer_physics = torch.optim.Adam(
-                [p for p in physics.torch_meta_params.values() if p.requires_grad == True]
-                , **params.physics["optimizer"]["kwargs"])
-        elif params.physics["optimizer"]["type"] == "SGD":
-            optimizer_physics = torch.optim.SGD(
-                [p for p in physics.torch_meta_params.values() if p.requires_grad == True]
-                , **params.physics["optimizer"]["kwargs"])
-        elif params.physics["optimizer"]["type"] == "none":
-            optimizer_physics = None
+        if params.physics["type"] == "arz_FD":
+            if params.physics["optimizer"]["type"] == "Adam":
+                optimizer_physics = torch.optim.Adam(
+                    physics.FD_learner.parameters()
+                    , **params.physics["optimizer"]["kwargs"])
+            elif params.physics["optimizer"]["type"] == "SGD":
+                optimizer_physics = torch.optim.SGD(
+                    physics.FD_learner.parameters()
+                    , **params.physics["optimizer"]["kwargs"])
+            elif params.physics["optimizer"]["type"] == "none":
+                optimizer_physics = None
+
+        else:
+            if params.physics["optimizer"]["type"] == "Adam":
+                optimizer_physics = torch.optim.Adam(
+                    [p for p in physics.torch_meta_params.values() if p.requires_grad == True]
+                    , **params.physics["optimizer"]["kwargs"])
+            elif params.physics["optimizer"]["type"] == "SGD":
+                optimizer_physics = torch.optim.SGD(
+                    [p for p in physics.torch_meta_params.values() if p.requires_grad == True]
+                    , **params.physics["optimizer"]["kwargs"])
+            elif params.physics["optimizer"]["type"] == "none":
+                optimizer_physics = None
     else:
         optimizer_physics = None
+
 
     ##########################################
     # Train the model
@@ -279,60 +447,283 @@ if __name__ == "__main__":
     # "test"
     #
     # restore_from: the directory for the model file.
+    if params.data['type'] == 'lwr_with_u_joint':
+        if (args.mode == "train") or (args.mode == "train_and_test"):
+            logging.info("Starting training for {} epoch(s)".format(params.epochs))
+            joint_training(model_1,model_2, optimizer,discriminator, train_feature, train_label,train_label_2, train_feature_phy,device,
+                     restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
+                     physics=physics,
+                     physics_optimizer=optimizer_physics,
+                     experiment_dir=args.experiment_dir,
+                     save_frequency=params.save_frequency,
+                     verbose_frequency=params.verbose_frequency,
+                     save_each_epoch=params.save_each_epoch,
+                     verbose_computation_time = params.verbose_computation_time
+                     )
 
-    if (args.mode == "train") or (args.mode == "train_and_test"):
-        logging.info("Starting training for {} epoch(s)".format(params.epochs))
-        training(model, optimizer,discriminator, train_feature, train_label, train_feature_phy,device,
-                 restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
-                 physics=physics,
-                 physics_optimizer=optimizer_physics,
-                 experiment_dir=args.experiment_dir,
-                 save_frequency=params.save_frequency,
-                 verbose_frequency=params.verbose_frequency,
-                 save_each_epoch=params.save_each_epoch,
-                 verbose_computation_time = params.verbose_computation_time
-                 )
+        if args.mode == "train_and_test":
+            logging.info("Starting training for {} epoch(s)".format(params.epochs))
+            joint_training(model_1,model_2, optimizer,discriminator, train_feature, train_label,train_label_2, train_feature_phy,device,
+                     restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
+                     physics=physics,
+                     physics_optimizer=optimizer_physics,
+                     experiment_dir=args.experiment_dir,
+                     save_frequency=params.save_frequency,
+                     verbose_frequency=params.verbose_frequency,
+                     save_each_epoch=params.save_each_epoch,
+                     verbose_computation_time = params.verbose_computation_time
+                     )
 
-    if args.mode == "train_and_test":
-        logging.info("Starting training for {} epoch(s)".format(params.epochs))
-        training(model, optimizer, discriminator, train_feature, train_label,device,
-                 restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
-                 physics=physics,
-                 physics_optimizer=optimizer_physics,
-                 experiment_dir=args.experiment_dir,
-                 save_frequency=params.save_frequency,
-                 verbose_frequency=params.verbose_frequency,
-                 save_each_epoch=params.save_each_epoch,
-                 verbose_computation_time=params.verbose_computation_time
-                 )
 
-        # run test
-        # !While, the used GPU memory may not be released. So it is recommended to run mode=train and then mode=test!#
-        device = torch.device('cpu')
-        logging.info("Before testing, switch to cpu")
-        physics.to(device)
-        model.to(device)
+            # run test
+            # !While, the used GPU memory may not be released. So it is recommended to run mode=train and then mode=test!#
+            device = torch.device('cpu')
+            logging.info("Before testing, switch to cpu")
+            physics.to(device)
+            model.to(device)
 
-        restore_from = os.path.join(args.experiment_dir, "weights/last.path.tar")
-        save_dir = os.path.join(args.experiment_dir, "test_result/")
-        model_alias = args.experiment_dir.split('/')[-1]
-        test_multiple_rounds(model, test_feature, test_label, test_rounds=args.test_rounds, save_dir=save_dir,
-                             model_alias=model_alias,
-                             restore_from=restore_from, metric_functions=metric_fns, n_samples=args.test_sample,
-                             noise=args.noise, args=args)
-        print('train_and_test done')
+            restore_from = os.path.join(args.experiment_dir, "weights/last.path.tar")
+            save_dir = os.path.join(args.experiment_dir, "test_result/")
+            model_alias = args.experiment_dir.split('/')[-1]
+            test_multiple_rounds(model, test_feature, test_label, test_rounds=args.test_rounds, save_dir=save_dir,
+                                 model_alias=model_alias,
+                                 restore_from=restore_from, metric_functions=metric_fns, n_samples=args.test_sample,
+                                 noise=args.noise, args=args)
+            save_path_x = os.path.join(save_dir, model_alias,
+                                            f"x.csv")
+            save_path_t = os.path.join(save_dir, model_alias,
+                                            f"t.csv")
+            np.savetxt(save_path_x, x , delimiter=",")
+            np.savetxt(save_path_t, t , delimiter=",")
+            save_path_Exact_rho = os.path.join(save_dir, model_alias,
+                                            f"Exact_rho.csv")
+            save_path_Exact_u = os.path.join(save_dir, model_alias,
+                                            f"Exact_u.csv")
+            np.savetxt(save_path_Exact_rho, Exact_rho , delimiter=",")
+            np.savetxt(save_path_Exact_u, Exact_u , delimiter=",")
 
-    if args.mode == "test":
-        restore_from = os.path.join(args.experiment_dir, "weights/last.path.tar")
-        save_dir = os.path.join(args.experiment_dir, "test_result/")
-        model_alias = args.experiment_dir.split('/')[-1]
-        test_multiple_rounds(model, test_feature, test_label,
-                             test_rounds=args.test_rounds,
-                             save_dir=save_dir,
-                             model_alias=model_alias,
-                             restore_from=restore_from,
-                             metric_functions=metric_fns,
-                             n_samples=args.test_sample,
-                             noise=args.noise,
-                             args=args)
-        print('test done')
+            save_path_idx = os.path.join(save_dir, model_alias,
+                                            f"idx.csv")
+            np.savetxt(save_path_idx, idx , delimiter=",", fmt="%d")
+            print('train_and_test done')
+
+
+        if args.mode == "test":
+            restore_from = os.path.join(args.experiment_dir, "weights/last.path.tar")
+            save_dir = os.path.join(args.experiment_dir, "test_result/")
+            model_alias = args.experiment_dir.split('/')[-1]
+        
+            test_multiple_rounds(model, test_feature, test_label,
+                                 test_rounds=args.test_rounds,
+                                 save_dir=save_dir,
+                                 model_alias=model_alias,
+                                 restore_from=restore_from,
+                                 metric_functions=metric_fns,
+                                 n_samples=args.test_sample,
+                                 noise=args.noise,
+                                 args=args)
+        
+            save_path_x = os.path.join(save_dir, model_alias,
+                                            f"x.csv")
+            save_path_t = os.path.join(save_dir, model_alias,
+                                            f"t.csv")
+            np.savetxt(save_path_x, x , delimiter=",")
+            np.savetxt(save_path_t, t , delimiter=",")
+
+            save_path_Exact_rho = os.path.join(save_dir, model_alias,
+                                            f"Exact_rho.csv")
+            save_path_Exact_u = os.path.join(save_dir, model_alias,
+                                            f"Exact_u.csv")
+            np.savetxt(save_path_Exact_rho, Exact_rho , delimiter=",")
+            np.savetxt(save_path_Exact_u, Exact_u , delimiter=",")
+
+            save_path_idx = os.path.join(save_dir, model_alias,
+                                            f"idx.csv")
+            np.savetxt(save_path_idx, idx , delimiter=",", fmt="%d")
+            print('test done')
+    elif params.data['type'] == 'arz_FD':
+        if (args.mode == "train") or (args.mode == "train_and_test"):
+            logging.info("Starting training for {} epoch(s)".format(params.epochs))
+            training(model, optimizer,discriminator, train_feature, train_label, train_feature_phy,device,FD_plot_freq=args.FD_plot_freq,
+                     restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
+                     physics=physics,
+                     physics_optimizer=optimizer_physics,
+                     experiment_dir=args.experiment_dir,
+                     save_frequency=params.save_frequency,
+                     verbose_frequency=params.verbose_frequency,
+                     save_each_epoch=params.save_each_epoch,
+                     verbose_computation_time = params.verbose_computation_time
+                     )
+
+        if args.mode == "train_and_test":
+            logging.info("Starting training for {} epoch(s)".format(params.epochs))
+            training(model, optimizer, discriminator, train_feature, train_label,device,FD_plot_freq=args.FD_plot_freq,
+                     restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
+                     physics=physics,
+                     physics_optimizer=optimizer_physics,
+                     experiment_dir=args.experiment_dir,
+                     save_frequency=params.save_frequency,
+                     verbose_frequency=params.verbose_frequency,
+                     save_each_epoch=params.save_each_epoch,
+                     verbose_computation_time=params.verbose_computation_time
+                     )
+
+            # run test
+            # !While, the used GPU memory may not be released. So it is recommended to run mode=train and then mode=test!#
+            device = torch.device('cpu')
+            logging.info("Before testing, switch to cpu")
+            physics.to(device)
+            model.to(device)
+
+            restore_from = os.path.join(args.experiment_dir, "weights/last.path.tar")
+            save_dir = os.path.join(args.experiment_dir, "test_result/")
+            model_alias = args.experiment_dir.split('/')[-1]
+            test_multiple_rounds(model, test_feature, test_label, test_rounds=args.test_rounds, save_dir=save_dir,
+                                 model_alias=model_alias,
+                                 restore_from=restore_from, metric_functions=metric_fns, n_samples=args.test_sample,
+                                 noise=args.noise, args=args)
+            save_path_x = os.path.join(save_dir, model_alias,
+                                            f"x.csv")
+            save_path_t = os.path.join(save_dir, model_alias,
+                                            f"t.csv")
+            np.savetxt(save_path_x, x , delimiter=",")
+            np.savetxt(save_path_t, t , delimiter=",")
+            save_path_Exact_rho = os.path.join(save_dir, model_alias,
+                                            f"Exact_rho.csv")
+            save_path_Exact_u = os.path.join(save_dir, model_alias,
+                                            f"Exact_u.csv")
+            np.savetxt(save_path_Exact_rho, Exact_rho , delimiter=",")
+            np.savetxt(save_path_Exact_u, Exact_u , delimiter=",")
+
+            save_path_idx = os.path.join(save_dir, model_alias,
+                                            f"idx.csv")
+            np.savetxt(save_path_idx, idx , delimiter=",", fmt="%d")
+            print('train_and_test done')
+
+        if args.mode == "test":
+            restore_from = os.path.join(args.experiment_dir, "weights/last.path.tar")
+            save_dir = os.path.join(args.experiment_dir, "test_result/")
+            model_alias = args.experiment_dir.split('/')[-1]
+        
+            test_multiple_rounds(model, test_feature, test_label,
+                                 test_rounds=args.test_rounds,
+                                 save_dir=save_dir,
+                                 model_alias=model_alias,
+                                 restore_from=restore_from,
+                                 metric_functions=metric_fns,
+                                 n_samples=args.test_sample,
+                                 noise=args.noise,
+                                 args=args)
+        
+            save_path_x = os.path.join(save_dir, model_alias,
+                                            f"x.csv")
+            save_path_t = os.path.join(save_dir, model_alias,
+                                            f"t.csv")
+            np.savetxt(save_path_x, x , delimiter=",")
+            np.savetxt(save_path_t, t , delimiter=",")
+
+            save_path_Exact_rho = os.path.join(save_dir, model_alias,
+                                            f"Exact_rho.csv")
+            save_path_Exact_u = os.path.join(save_dir, model_alias,
+                                            f"Exact_u.csv")
+            np.savetxt(save_path_Exact_rho, Exact_rho , delimiter=",")
+            np.savetxt(save_path_Exact_u, Exact_u , delimiter=",")
+
+            save_path_idx = os.path.join(save_dir, model_alias,
+                                            f"idx.csv")
+            np.savetxt(save_path_idx, idx , delimiter=",", fmt="%d")
+            print('test done')
+
+    else:
+        if (args.mode == "train") or (args.mode == "train_and_test"):
+            logging.info("Starting training for {} epoch(s)".format(params.epochs))
+            training(model, optimizer,discriminator, train_feature, train_label, train_feature_phy,device,
+                     restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
+                     physics=physics,
+                     physics_optimizer=optimizer_physics,
+                     experiment_dir=args.experiment_dir,
+                     save_frequency=params.save_frequency,
+                     verbose_frequency=params.verbose_frequency,
+                     save_each_epoch=params.save_each_epoch,
+                     verbose_computation_time = params.verbose_computation_time
+                     )
+
+        if args.mode == "train_and_test":
+            logging.info("Starting training for {} epoch(s)".format(params.epochs))
+            training(model, optimizer, discriminator, train_feature, train_label,device,
+                     restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
+                     physics=physics,
+                     physics_optimizer=optimizer_physics,
+                     experiment_dir=args.experiment_dir,
+                     save_frequency=params.save_frequency,
+                     verbose_frequency=params.verbose_frequency,
+                     save_each_epoch=params.save_each_epoch,
+                     verbose_computation_time=params.verbose_computation_time
+                     )
+
+            # run test
+            # !While, the used GPU memory may not be released. So it is recommended to run mode=train and then mode=test!#
+            device = torch.device('cpu')
+            logging.info("Before testing, switch to cpu")
+            physics.to(device)
+            model.to(device)
+
+            restore_from = os.path.join(args.experiment_dir, "weights/last.path.tar")
+            save_dir = os.path.join(args.experiment_dir, "test_result/")
+            model_alias = args.experiment_dir.split('/')[-1]
+            test_multiple_rounds(model, test_feature, test_label, test_rounds=args.test_rounds, save_dir=save_dir,
+                                 model_alias=model_alias,
+                                 restore_from=restore_from, metric_functions=metric_fns, n_samples=args.test_sample,
+                                 noise=args.noise, args=args)
+            save_path_x = os.path.join(save_dir, model_alias,
+                                            f"x.csv")
+            save_path_t = os.path.join(save_dir, model_alias,
+                                            f"t.csv")
+            np.savetxt(save_path_x, x , delimiter=",")
+            np.savetxt(save_path_t, t , delimiter=",")
+            save_path_Exact_rho = os.path.join(save_dir, model_alias,
+                                            f"Exact_rho.csv")
+            save_path_Exact_u = os.path.join(save_dir, model_alias,
+                                            f"Exact_u.csv")
+            np.savetxt(save_path_Exact_rho, Exact_rho , delimiter=",")
+            np.savetxt(save_path_Exact_u, Exact_u , delimiter=",")
+
+            save_path_idx = os.path.join(save_dir, model_alias,
+                                            f"idx.csv")
+            np.savetxt(save_path_idx, idx , delimiter=",", fmt="%d")
+            print('train_and_test done')
+
+        if args.mode == "test":
+            restore_from = os.path.join(args.experiment_dir, "weights/last.path.tar")
+            save_dir = os.path.join(args.experiment_dir, "test_result/")
+            model_alias = args.experiment_dir.split('/')[-1]
+        
+            test_multiple_rounds(model, test_feature, test_label,
+                                 test_rounds=args.test_rounds,
+                                 save_dir=save_dir,
+                                 model_alias=model_alias,
+                                 restore_from=restore_from,
+                                 metric_functions=metric_fns,
+                                 n_samples=args.test_sample,
+                                 noise=args.noise,
+                                 args=args)
+        
+            save_path_x = os.path.join(save_dir, model_alias,
+                                            f"x.csv")
+            save_path_t = os.path.join(save_dir, model_alias,
+                                            f"t.csv")
+            np.savetxt(save_path_x, x , delimiter=",")
+            np.savetxt(save_path_t, t , delimiter=",")
+
+            save_path_Exact_rho = os.path.join(save_dir, model_alias,
+                                            f"Exact_rho.csv")
+            save_path_Exact_u = os.path.join(save_dir, model_alias,
+                                            f"Exact_u.csv")
+            np.savetxt(save_path_Exact_rho, Exact_rho , delimiter=",")
+            np.savetxt(save_path_Exact_u, Exact_u , delimiter=",")
+
+            save_path_idx = os.path.join(save_dir, model_alias,
+                                            f"idx.csv")
+            np.savetxt(save_path_idx, idx , delimiter=",", fmt="%d")
+            print('test done')
+

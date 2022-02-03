@@ -11,9 +11,10 @@
             "last_activation_type": "tanh"
         },
         "t_net": {
-            "n_hidden": 2,
-            "hidden_dim": 256,
-            "activation_type": "leaky_relu",
+
+            "n_hidden": 6,
+            "hidden_dim": 40,
+            "activation_type": "tanh",
             "last_activation_type": "tanh"
         },
         "z_miu_net": {
@@ -36,13 +37,13 @@
         }
     },
     "physics": {
-        "type": "arz",
+        "type": "none",
         "train": "False",
         "loss_fn": "raissi",
         "hypers": {
-            "alpha": 1,
+            "alpha": 0.5,
             "n_repeat": 10,
-            "alpha_u_rho": 0.9
+            "alpha_u_rho": 0.5
         },
         "optimizer": {
             "type": "Adam",
@@ -83,7 +84,7 @@
             "sigma_tau": 1
         }
     },
-    "batch_size": 500,
+    "batch_size": 5000,
     "epochs": 20000,
     "save_frequency": 1,
     "verbose_frequency": 1,
@@ -91,13 +92,15 @@
     "verbose_computation_time": 0,
     "data": {
         "type": "arz",
-        "loop_number": 4,
+
+        "loop_number": 16,
         "noise_scale": 0.02,
         "noise_number": 20
     },
     "metrics": [
-        "rmse",
-        "nll"
+
+        "rmse"
+
     ],
     "learning_z": "True"
 }
