@@ -10,7 +10,7 @@ __pycache__/
 .Python
 experiments/
 !experiments/arz/experiment_setting.json
-!experiments/arz_learning_z/experiment_setting.json
+!experiments/arz_learning_z/safe_folder/pure_gan/experiment_setting.json
 !experiments/lwr/experiment_setting.json
 !experiments/lwr_learning_z/experiment_setting.json
 build/

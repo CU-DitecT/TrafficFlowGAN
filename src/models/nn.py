@@ -15,12 +15,25 @@ def get_mask(z_dim, n_transformation):
     return mask
 
 
+class Normalization(nn.Module):
+    def __init__(self, mean, std, device):
+        super(Normalization, self).__init__()
+        self.device = device
+        self.mean = torch.from_numpy(mean).to(self.device)
+        self.std = torch.from_numpy(std).to(self.device)
+
+    def forward(self, tensors):
+        norm_tensor = (tensors - self.mean) / self.std
+        return norm_tensor
+
 class RealNVP_lz(nn.Module):
     def __init__(self, z_dim, n_transformation, train, mean, std, device, s_args, t_args, s_kwargs, t_kwargs,
                 z_miu_args,z_sigma_args,z_miu_kwargs,z_sigma_kwargs):
         super(RealNVP_lz, self).__init__()
         mask = get_mask(z_dim, n_transformation)
         mask_torch = torch.from_numpy(mask)
+        self.mean = mean
+        self.std = std
         self.mask = nn.Parameter(mask_torch, requires_grad=False)
         self.nn = get_fully_connected_layer(*t_args, **t_kwargs,mean=mean,std=std)
         self.net_miu = torch.nn.ModuleList([get_fully_connected_layer(*z_miu_args, **z_miu_kwargs,mean=mean,std=std,NNz=True)])
@@ -33,7 +46,11 @@ class RealNVP_lz(nn.Module):
         self.prior = torch.distributions.MultivariateNormal(torch.zeros(z_dim, device=device),
                                                             torch.eye(z_dim, device=device))
         self.train = (train == "True")
+
+
+
         self.model_D = torch.nn.Sequential(
+            Normalization(mean, std, device),
             torch.nn.Linear(4,20),
             # torch.nn.LeakyReLU(0.2, inplace=False),
             torch.nn.Tanh(),
@@ -57,9 +74,16 @@ class RealNVP_lz(nn.Module):
             torch.nn.Tanh(),
             torch.nn.Linear(20, 1),
         )
+        def init_weights(m):
+            if isinstance(m,torch.nn.Linear):
+                torch.nn.init.xavier_uniform_(m.weight)
+                m.bias.data.fill_(0.01)
+        self.model_D.apply(init_weights)
+        # for p in self.model_D.parameters():
+        #     torch.nn.init.xavier_uniform_(p)
         self.optimizer = torch.optim.Adam(self.model_D.parameters(), lr=0.001)
     def g(self, z, c):
-        x = self.nn(torch.cat( (c, z), 1))
+        x = self.nn(torch.cat( (z,c), 1))
         return x
     
     def f(self, x, c):
@@ -102,23 +126,37 @@ class RealNVP_lz(nn.Module):
         # x = x*torch.from_numpy(np.array([2.0758793e-01, 1.0194696e+01])).to(self.device)+torch.from_numpy(np.array([7.2862007e-02, 3.8798647e+00])).to(self.device)
         return x[:, 0:1], x[:, 1:2]
 
-    def training_gan(self, y, c, writer, epoch):
+    def training_gan(self, y, c, writer, epoch, train= None):
         c = torch.from_numpy(c).to(self.device)
         y = torch.from_numpy(y).to(self.device)
-        for _ in range(1):
-            self.optimizer.zero_grad()
+        if train:
+            for _ in range(2):
+                self.optimizer.zero_grad()
+                fake_y = self.test(c)
+                real_y = y
+                T_real = self.model_D(torch.cat((real_y,c),1))
+                T_fake = self.model_D(torch.cat((fake_y[0],fake_y[1],c),1))
+                # T_real = self.model_D(real_y)
+                # T_fake = self.model_D(torch.cat((fake_y[0],fake_y[1]),1))
+                writer.add_scalar("loss/T_real", T_real.mean().cpu().detach().numpy(), epoch + 1)
+                writer.add_scalar("loss/T_fake", T_fake.mean().cpu().detach().numpy(), epoch + 1)
+                # T_real = self.model_D(real_y)
+                # T_fake = self.model_D(torch.cat((fake_y[0],fake_y[1]),1))
+                loss_d = - (torch.log(1 - torch.sigmoid(T_real) + 1e-8) + torch.log(torch.sigmoid(T_fake) + 1e-8))
+                # loss_d = -T_real.mean() + T_fake.mean()
+                loss_d.mean().backward(retain_graph=True)
+                self.optimizer.step()
+                # for p in self.model_D.parameters():
+                #     p.data.clamp_(-0.01, 0.01)
+                writer.add_scalar("loss/Discriminator_data_loss", loss_d.mean().cpu().detach().numpy(), epoch + 1)
+        else:
             fake_y = self.test(c)
-            real_y = y
-            T_real = self.model_D(torch.cat((c,real_y),1))
-            T_fake = self.model_D(torch.cat((c,fake_y[0],fake_y[1]),1))
-            # loss_d = - (torch.log(1 - torch.sigmoid(T_real) + 1e-8) + torch.log(torch.sigmoid(T_fake) + 1e-8))
-            loss_d = -T_real.mean() + T_fake.mean()
-            loss_d.backward(retain_graph=True)
-            self.optimizer.step()
-            for p in self.model_D.parameters():
-                p.data.clamp_(-0.01, 0.01)
-            writer.add_scalar("loss/Discriminator_data_loss", loss_d.mean().cpu().detach().numpy(), epoch + 1)
-        return -self.model_D(torch.cat((c,fake_y[0],fake_y[1]),1)).mean()
+        # wgan:
+        return self.model_D(torch.cat((fake_y[0],fake_y[1],c),1)).mean()
 
+        # vanilla gan
+        # return self.model_D(torch.cat((fake_y[0],fake_y[1]),1)).mean()
 
+        # mse
+        # return torch.square(torch.cat((fake_y[0],fake_y[1]), 1) - real_y ).mean()
 

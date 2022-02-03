@@ -58,7 +58,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
                             }
     Data_loss = []
     np.random.seed(1)
-    n_critic=5
+    n_critic=1
     for epoch in tqdm(range(begin_at_epoch, epochs)):
         # shuffle the data
         idx = np.random.choice(X_train.shape[0], X_train.shape[0], replace=False)
@@ -94,7 +94,10 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
             # loss = -loss.mean()
             data_loss = torch.tensor(0)
             if training_gan_data:
-                loss_data_G = model.training_gan(y_batch, x_batch, writer, epoch)
+                if epoch%n_critic == 0:
+                    loss_data_G = model.training_gan(y_batch, x_batch, writer, epoch, train = True)
+                else:
+                    loss_data_G = model.training_gan(y_batch, x_batch, writer, epoch, train= False)
                 # loss += loss_data_G
                 loss = loss_data_G
                 loss_data_G_np = loss_data_G.cpu().detach().numpy()
@@ -160,8 +163,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
 
             start_time = time.time()
             if model.train is True:
-                if epoch%n_critic == 0:
-                    optimizer.step()
+                optimizer.step()
             step_data_time = time.time() - start_time
 
             start_time = time.time()
