@@ -157,7 +157,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
 
             start_time = time.time()
             if model.train is True:
-                #optimizer.step()
+                optimizer.step()
                 pass
 
             step_data_time = time.time() - start_time
