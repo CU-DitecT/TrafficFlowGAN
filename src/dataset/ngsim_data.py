@@ -43,6 +43,13 @@ class ngsim_data_loader():
         # rhoMat_smooth = scipy.ndimage.uniform_filter(rhoMat, size=5, mode='nearest')
         # uMat_smooth = scipy.ndimage.uniform_filter(uMat, size=5, mode='nearest')
 
+        # update 0203 zm: cut the ngsim
+        rhoMat = rhoMat[:,:170]
+        uMat = uMat[:,:170]
+        tt = tt[:170,:]
+
+
+
         X, T = np.meshgrid(xx, tt)
         print(len(X), len(X[0]))  # 21 by 1770
 
@@ -65,8 +72,8 @@ class ngsim_data_loader():
         idx = np.random.choice(X_star.shape[0], N_u, replace=False)  # N_u = 22000 out of 37170 for Auxiliary points
         idx2 = []
 
-        for i in range(1770):  # for observations on the loops
-            base = i * 21
+        for i in range(Exact_rho.shape[0]):  # for observations on the loops
+            base = i * Exact_rho.shape[1]
             index = [base + ele for ele in N_loop]
             idx2 += index
 
