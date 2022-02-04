@@ -134,7 +134,7 @@ if __name__ == "__main__":
         test_label_1 = np.concatenate([test_label_rho, gaussion_noise_1], 1)
         test_label_2 = np.concatenate([test_label_u, gaussion_noise_2], 1)
 
-    elif params.data['type'] == 'arz' or 'arz_FD':
+    elif params.data['type'] in ['arz', 'arz_FD']:
         data_loaded = arz_data_loader(params.data['loop_number'], params.data['noise_scale'],
                                       params.data['noise_number'])
         train_feature, train_label, train_feature_phy, x, t,idx = data_loaded.load_data()
