@@ -55,7 +55,7 @@ parser.add_argument('--nlpd_use_mean', default='True')
 parser.add_argument('--nlpd_n_bands', default=1000)
 parser.add_argument('--force_overwrite', default=False, action='store_true',
                     help="For debug. Force to overwrite")
-parser.add_argument('--FD_plot_freq', default=100)
+parser.add_argument('--FD_plot_freq', default=1000)
 
 # Set the random seed for the whole graph for reproductible experiments
 if __name__ == "__main__":
@@ -99,13 +99,11 @@ if __name__ == "__main__":
     # train_feature, train_label = arz_data.load_data()
     if params.data['type'] == 'lwr':
         data_loaded = lwr_data_loader(params.data['loop_number'], params.data['noise_scale'],
-
                                       params.data['noise_number'], params.data['noise_miu'], params.data['noise_sigma'])        
         train_feature, train_label, train_feature_phy, x, t,idx = data_loaded.load_data()
         test_feature, Exact_rho = data_loaded.load_test()
         mean, std = data_loaded.load_bound()
         Exact_u=np.random.normal(params.data['noise_miu'], params.data['noise_sigma'],Exact_rho.shape) #dummy variable 
-
         test_label = Exact_rho.flatten()[:, None]
         gaussion_noise = np.random.normal(params.data['noise_miu'], params.data['noise_sigma'],
                                           test_label.shape[0]).reshape(-1, 1)
@@ -139,13 +137,12 @@ if __name__ == "__main__":
     elif params.data['type'] in ['arz', 'arz_FD']:
         data_loaded = arz_data_loader(params.data['loop_number'], params.data['noise_scale'],
                                       params.data['noise_number'])
-        train_feature, train_label, train_feature_phy, X, T = data_loaded.load_data()
+        train_feature, train_label, train_feature_phy, x, t,idx = data_loaded.load_data()
         test_feature, Exact_rho, Exact_u = data_loaded.load_test()
         mean, std = data_loaded.load_bound()
         test_label_rho = Exact_rho.flatten()[:, None]
         test_label_u = Exact_u.flatten()[:, None]
         test_label = np.concatenate([test_label_rho, test_label_u], 1)
-
 
     elif params.data['type'] == 'ngsim':
         data_loaded = ngsim_data_loader(params.data['loop_number'], params.data['noise_scale'],
@@ -157,12 +154,12 @@ if __name__ == "__main__":
         mean, std = data_loaded.load_bound()
         test_label = np.concatenate([test_label_rho, test_label_u], 1)
 
-
     elif params.data['type'] == 'burgers':
         data_loaded = burgers_data_loader(params.data['noise_scale'],params.data['noise_number'], 
                                             params.data['noise_miu'], params.data['noise_sigma'])
-        train_feature, train_label, train_feature_phy, X, T = data_loaded.load_data()
+        train_feature, train_label, train_feature_phy, x, t,idx = data_loaded.load_data()
         test_feature, Exact_rho = data_loaded.load_test()
+        Exact_u=np.random.normal(params.data['noise_miu'], params.data['noise_sigma'],Exact_rho.shape) #dummy variable 
         test_label = Exact_rho.flatten()[:, None]
         gaussion_noise = np.random.normal(params.data['noise_miu'], params.data['noise_sigma'],
                                           test_label.shape[0]).reshape(-1, 1)
@@ -507,7 +504,6 @@ if __name__ == "__main__":
             np.savetxt(save_path_idx, idx , delimiter=",", fmt="%d")
             print('train_and_test done')
 
-
         if args.mode == "test":
             restore_from = os.path.join(args.experiment_dir, "weights/last.path.tar")
             save_dir = os.path.join(args.experiment_dir, "test_result/")
@@ -726,4 +722,3 @@ if __name__ == "__main__":
                                             f"idx.csv")
             np.savetxt(save_path_idx, idx , delimiter=",", fmt="%d")
             print('test done')
-

@@ -52,9 +52,9 @@ class RealNVP_lz(nn.Module):
     def f(self, x, c):
         # transform from x to z
         ## hard code for Ngsim normalization
-        self.mean = np.array([2.0758793e-01, 1.0194696e+01])
-        self.std = np.array([7.2862007e-02, 3.8798647e+00])
-        x = (x-self.mean)/self.std
+        # self.mean = np.array([2.0758793e-01, 1.0194696e+01])
+        # self.std = np.array([7.2862007e-02, 3.8798647e+00])
+        # x = (x-self.mean)/self.std
         if c.shape[1]==2:
             activation = {"x1": x[:, 0],
                       "x2": x[:, 1],
