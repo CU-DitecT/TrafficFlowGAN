@@ -341,6 +341,8 @@ if __name__ == "__main__":
             model = RealNVP(params.affine_coupling_layers["z_dim"],
                             params.affine_coupling_layers["n_transformation"],
                             params.affine_coupling_layers["train"],
+                            mean,
+                            std,
                             device,
                             s_args,
                             t_args,

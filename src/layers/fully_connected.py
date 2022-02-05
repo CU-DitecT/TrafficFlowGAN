@@ -22,6 +22,8 @@ class Normalization(nn.Module):
 
 
     def forward(self, tensors):
+        # because the p-net has only 2 inputs (x,t)
+        # while the s- and t- net have 4 inputs (rho, u, x, t)
         if self.NNz:
             #norm_tensor = (tensors - self.mean[2:4]) / self.std[2:4]
             norm_tensor = (tensors - self.mean[2:]) / self.std[2:]
@@ -50,6 +52,7 @@ def get_fully_connected_layer(input_dim, output_dim, n_hidden, hidden_dim,
                               std = 1,
                               NNz= False):
     modules = [ Normalization(mean, std, device,NNz), nn.Linear(input_dim, hidden_dim, device=device)]
+    # modules = [nn.Linear(input_dim, hidden_dim, device=device)]
     activation = instantiate_activation_function(activation_type)
     if activation is not None:
         modules.append(activation)
@@ -67,12 +70,12 @@ def get_fully_connected_layer(input_dim, output_dim, n_hidden, hidden_dim,
     modules.append(nn.Linear(hidden_dim, output_dim, device=device))
     last_activation = instantiate_activation_function(last_activation_type)
 
-    modules.append(Multiply(0.5))
+    # modules.append(Multiply(0.5))
     if last_activation_type == "none":
         pass
     else:
         modules.append(last_activation)
-    modules.append(Multiply(2))
+    # modules.append(Multiply(2))
     # the "mulltiply 2" is to stretch the range of the activation funtion (e.g. sigmoid) for 2 times long
     # the "multiply 0.5" is the stretch the x-axis accordingly.
 

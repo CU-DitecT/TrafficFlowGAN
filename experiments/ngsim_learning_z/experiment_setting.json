@@ -20,18 +20,18 @@
             "n_hidden": 2,
             "hidden_dim": 64,
             "activation_type": "leaky_relu",
-            "last_activation_type": "tanh"
+            "last_activation_type": "none"
         },
         "z_sigma_net": {
             "n_hidden": 2,
             "hidden_dim": 64,
             "activation_type": "leaky_relu",
-            "last_activation_type": "sigmoid"
+            "last_activation_type": "none"
         },
         "optimizer": {
             "type": "Adam",
             "kwargs": {
-                "lr": 0.001
+                "lr": 0.00001
             }
         }
     },
@@ -97,8 +97,7 @@
     },
     "metrics": [
         "rmse",
-        "nll",
-        "kl"
+        "nll"
     ],
     "learning_z": "True"
 }

@@ -106,8 +106,18 @@ class RealNVP_lz(nn.Module):
             miu, sigma = self.NN_z(c.to(self.device))
         else:
             miu, sigma = self.NN_z(torch.from_numpy(c).to(self.device))
+
+        # hard code here
+        sigma = torch.sigmoid(sigma) + 0.5
+
+
         L = 0.5*torch.log(torch.tensor([2*math.pi], device=self.device))+torch.log(sigma)+torch.div(torch.mul((z-miu),(z-miu)),2*torch.mul(sigma,sigma))
         L = L[:,0:1]+L[:,1:2]
+
+        activation["miu"] = miu
+        activation["sigma"] = sigma
+        activation["L"] = -L.squeeze()
+        activation["log_p"] = log_p
 
         return -L.squeeze() + log_p , activation
 

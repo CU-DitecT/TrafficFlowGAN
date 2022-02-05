@@ -174,13 +174,14 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
                     # loss += 10*loss_g.squeeze().squeeze()
 
 
-                    loss.backward(retain_graph=True)
+                    # loss.backward(retain_graph=True)
+                    loss.backward()
                     optimizer.step()
 
             start_time = time.time()
 
             #loss.backward(retain_graph=True)
-            loss.backward()
+            loss.backward(retain_graph=True)
             backward_all_time = time.time() - start_time
 
             start_time = time.time()
@@ -459,8 +460,8 @@ def test_multiple_rounds(model, test_feature,test_label, test_rounds=1,
     np.savetxt(save_path_feature, test_feature, delimiter=",")
     np.savetxt(save_path_target_rho, exact_sample_rho, delimiter=",")
     np.savetxt(save_path_target_u, exact_sample_u, delimiter=",")
-    np.savetxt(save_path_kl_rho, kl_rho, delimiter=",")
-    np.savetxt(save_path_kl_u, kl_u, delimiter=",")
+#    np.savetxt(save_path_kl_rho, kl_rho, delimiter=",")
+#     np.savetxt(save_path_kl_u, kl_u, delimiter=",")
 
 
 

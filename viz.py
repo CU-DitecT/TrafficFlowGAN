@@ -17,7 +17,7 @@ parser.add_argument('--result_dir', default='experiments/ngsim_learning_z/test_r
                     help="folder to viz") 
 parser.add_argument('--mode', default='debug',
                     help="mode debug keeps more detail; mode paper is clean' ")
-parser.add_argument('--sudoku', default=True, action='store_true',
+parser.add_argument('--sudoku', default=False, action='store_true',
                     help="while to plot sudoku")
 parser.add_argument('--force_overwrite', default=False, action='store_true',
                     help="For debug. Force to clean the 'figure' folder each running ")
@@ -238,10 +238,10 @@ def main(experiment_dir, result_dir, mode="debug", sudoku=True, interval="predic
 
     y_true_rho = np.loadtxt(os.path.join(result_dir, "targets_test_rho.csv"), delimiter=",", dtype=np.float32)
     y_pred_rho = np.loadtxt(os.path.join(result_dir, "predictions_test_rho.csv"), delimiter=",", dtype=np.float32)
-    kl_rho = np.loadtxt(os.path.join(result_dir, "kl_rho_test.csv"), delimiter=",", dtype=np.float32)
+    # kl_rho = np.loadtxt(os.path.join(result_dir, "kl_rho_test.csv"), delimiter=",", dtype=np.float32)
     y_true_u = np.loadtxt(os.path.join(result_dir, "targets_test_u.csv"), delimiter=",", dtype=np.float32)
     y_pred_u = np.loadtxt(os.path.join(result_dir, "predictions_test_u.csv"), delimiter=",", dtype=np.float32)
-    kl_u = np.loadtxt(os.path.join(result_dir, "kl_u_test.csv"), delimiter=",", dtype=np.float32)
+    # kl_u = np.loadtxt(os.path.join(result_dir, "kl_u_test.csv"), delimiter=",", dtype=np.float32)
 
     alias = os.path.basename(result_dir)
     viz_dir = os.path.join(experiment_dir, "viz", alias)

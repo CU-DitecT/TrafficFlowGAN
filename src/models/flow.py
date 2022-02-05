@@ -15,13 +15,13 @@ def get_mask(z_dim, n_transformation):
 
 
 class RealNVP(nn.Module):
-    def __init__(self, z_dim, n_transformation, train, device, s_args, t_args, s_kwargs, t_kwargs):
+    def __init__(self, z_dim, n_transformation, train, mean, std, device, s_args, t_args, s_kwargs, t_kwargs):
         super(RealNVP, self).__init__()
         mask = get_mask(z_dim, n_transformation)
         mask_torch = torch.from_numpy(mask)
         self.mask = nn.Parameter(mask_torch, requires_grad=False)
-        t = [get_fully_connected_layer(*t_args, **t_kwargs) for _ in range(mask.shape[0])]
-        s = [get_fully_connected_layer(*s_args, **s_kwargs) for _ in range(mask.shape[0])]
+        t = [get_fully_connected_layer(*t_args, **t_kwargs, mean=mean, std=std) for _ in range(mask.shape[0])]
+        s = [get_fully_connected_layer(*s_args, **s_kwargs, mean=mean, std=std) for _ in range(mask.shape[0])]
 
         # hardcode: force the first s-net to have a tanh activation function
         #s_kwargs["last_activation_type"] = "tanh"
@@ -29,8 +29,12 @@ class RealNVP(nn.Module):
         self.device = device
         self.t = torch.nn.ModuleList(t)
         self.s = torch.nn.ModuleList(s)
-        self.prior = torch.distributions.MultivariateNormal(torch.zeros(z_dim), torch.eye(z_dim)*0.05)
+        self.prior = torch.distributions.MultivariateNormal(torch.zeros(z_dim), torch.eye(z_dim)*0.1)
         self.train = (train == "True")
+
+        self.mean = mean # 4dim
+        self.std = std # 4 dim
+
 
     def g(self, z, c):
         # transform from z to x
@@ -46,10 +50,12 @@ class RealNVP(nn.Module):
 
     def f(self, x, c):
         # transform from x to z
+        x = (x - self.mean[:2]) / self.std[:2]
         activation = {"x1": x[:, 0],
                       "x2": x[:, 1],
                       "c_1": c[:,0],
                       "c_2": c[:,1]}
+
         z = torch.from_numpy(x).to(self.device) # z = x
         c_ = torch.from_numpy(c).to(self.device)
         log_det_J = z.new_zeros(x.shape[0])  # log_det_J = x.new_zeros(x.shape[0])
@@ -79,7 +85,7 @@ class RealNVP(nn.Module):
         return self.prior.log_prob(z.float())  + log_p , activation
 
     def eval(self, c):
-        torch.manual_seed(1)
+        #torch.manual_seed(1)
         z = self.prior.sample((c.shape[0], 1))
         z = torch.squeeze(z)
         c_ = torch.from_numpy(c).to(self.device)
@@ -99,4 +105,6 @@ class RealNVP(nn.Module):
             c_ = torch.from_numpy(c).to(self.device)
         # log_p = self.prior.log_prob(z, c)
         x = self.g(z, c_)
+
+        x = x * torch.from_numpy(self.std[:2]).to(self.device) + torch.from_numpy(self.mean[:2]).to(self.device)
         return x[:, 0:1], x[:, 1:2]

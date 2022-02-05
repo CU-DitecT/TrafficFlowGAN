@@ -215,7 +215,7 @@ class GaussianARZ(torch.nn.Module):
             z = self.randn.sample(sample_shape=(1, n_repeat))[0]
             z = torch.repeat_interleave(z, batch_size, dim=0)
             torch_params[param_key] = torch_meta_params[mu_key] # + torch_meta_params[sigma_key] * z
-            torch_params[param_key].retain_grad()
+            # torch_params[param_key].retain_grad()
             #torch_params[param_key] = torch.clamp(torch_params[param_key], self.lower_bounds[mu_key],
             #                                        self.upper_bounds[mu_key])
         return torch_params
@@ -234,12 +234,15 @@ class FD_learner(torch.nn.Module):
             self.layers.append(nn.Linear(n_hidden, n_hidden))
             self.bn.append(nn.BatchNorm1d(n_hidden))
         self.outputZ   = torch.nn.Linear(n_hidden, n_output) # output layer
+        self.rho_max = torch.nn.Parameter(torch.tensor(1.5, dtype=torch.float32), requires_grad=True)
+        self.u_max = torch.nn.Parameter(torch.tensor(0.1969, dtype=torch.float32), requires_grad=True)
     def forward(self, x):
         for i, layer in enumerate(self.layers[:-1]):
             x = layer(x)
-            x = self.bn[i](x)
-            x = F.relu(x)        
+            # x = self.bn[i](x)
+            x = F.relu(x)
         x = self.outputZ(x)                                              # linear output
+        # x = self.u_max * ( 1 - x / (self.rho_max + torch.tensor(1e-4) ) )
         return x
 
 class GaussianARZ_FD(torch.nn.Module):
@@ -271,7 +274,7 @@ class GaussianARZ_FD(torch.nn.Module):
 
     def caculate_residual(self, rho, u,  x, t, Tau, model):
         #self, rho, u,  x, t, Umax, RHOmax, Tau, model
-        Tau=Tau/50.0
+        # Tau=Tau/50.0
 
         drho_dt = torch.autograd.grad(rho, t, torch.ones([t.shape[0], 1], device=self.device).to(model.device),
                                       retain_graph=True, create_graph=True)[0]
@@ -309,7 +312,17 @@ class GaussianARZ_FD(torch.nn.Module):
         f_u_mean = torch.square(torch.mean(f_u, dim=1))
 
 
-        return f_rho_mean, f_u_mean, drho_dt
+        # shape constraint
+        # (1) first derivative of U_eq
+        rho_eval = torch.arange(0, 1, step=0.01, dtype = torch.float32,requires_grad=True)
+        U_eq_eval = self.FD_learner(rho_eval.view(-1,1))
+        d_U_eq_eval = torch.autograd.grad(U_eq_eval, rho_eval, torch.ones([rho_eval.shape[0], 1], device=self.device,).to(model.device),
+                                      retain_graph=True, create_graph=True)[0]
+        d_U_eq_eval = torch.maximum(torch.zeros_like(d_U_eq_eval), d_U_eq_eval)
+        shape_loss = d_U_eq_eval.mean()
+
+
+        return f_rho_mean+10*shape_loss, f_u_mean+10*shape_loss, drho_dt
 
     def get_residuals(self, model, x_unlabel):
         # get gradient
