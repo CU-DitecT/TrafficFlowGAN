@@ -39,7 +39,7 @@ else:
     logging.info("cuda is not available")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--experiment_dir', default='experiments/arz_FD_learning_z', #lwr_with_u_learning_z
+parser.add_argument('--experiment_dir', default='experiments/ngsim_learning_z', #lwr_with_u_learning_z
                     help="Directory containing experiment_setting.json")
 parser.add_argument('--restore_from', default= None, #"experiments/lwr_learning_z/weights/last.path.tar",
                     help="Optional, file location containing weights to reload")
@@ -48,9 +48,9 @@ parser.add_argument('--mode', default='train',
 parser.add_argument('--n_hidden', default=3)
 parser.add_argument('--noise', default=0.2)
 
-parser.add_argument('--test_sample', default=3)  # 100
+parser.add_argument('--test_sample', default=100)  # 100
 
-parser.add_argument('--test_rounds', default=1)  # 3
+parser.add_argument('--test_rounds', default=3)  # 3
 parser.add_argument('--nlpd_use_mean', default='True')
 parser.add_argument('--nlpd_n_bands', default=1000)
 parser.add_argument('--force_overwrite', default=False, action='store_true',
@@ -153,7 +153,7 @@ if __name__ == "__main__":
         test_label_u = Exact_u.flatten()[:, None]
         mean, std = data_loaded.load_bound()
         test_label = np.concatenate([test_label_rho, test_label_u], 1)
-
+        
     elif params.data['type'] == 'burgers':
         data_loaded = burgers_data_loader(params.data['noise_scale'],params.data['noise_number'], 
                                             params.data['noise_miu'], params.data['noise_sigma'])

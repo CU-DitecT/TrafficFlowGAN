@@ -11,10 +11,10 @@ from src.metrics_factory.get_KL import get_kde_curve
 from src.utils import check_exist_and_create, load_json, save_dict_to_json
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--experiment_dir', default='experiments/arz_learning_z',
+parser.add_argument('--experiment_dir', default='experiments/ngsim_learning_z',
                     help="Directory containing 'test' ")
-parser.add_argument('--result_dir', default='experiments/arz_learning_z/test_result/arz_learning_z/',
-                    help="folder to viz")
+parser.add_argument('--result_dir', default='experiments/ngsim_learning_z/test_result/ngsim_learning_z/', 
+                    help="folder to viz") 
 parser.add_argument('--mode', default='debug',
                     help="mode debug keeps more detail; mode paper is clean' ")
 parser.add_argument('--sudoku', default=True, action='store_true',
@@ -144,11 +144,12 @@ def plot_pred_data(y_pred_variable,Exact_variable,variable,viz_dir,X_star,x,t,X,
     gs1 = gridspec.GridSpec(1, 3)
     gs1.update(top=1-1/3, bottom=0, left=0.1, right=0.9, wspace=0.5)
 
+    id1=25
     ax = plt.subplot(gs1[0, 0])
-    ax.plot(x,Exact_variable[25,:], 'b-', linewidth = 2, label = 'Exact')       
-    ax.plot(x,VARIABLE_pred[25,:], 'r--', linewidth = 2, label = 'Prediction')
-    lower = VARIABLE_pred[25,:] - 2.0*np.sqrt(Sigma_pred_variable[25,:])
-    upper = VARIABLE_pred[25,:] + 2.0*np.sqrt(Sigma_pred_variable[25,:])
+    ax.plot(x,Exact_variable[id1,:], 'b-', linewidth = 2, label = 'Exact')       
+    ax.plot(x,VARIABLE_pred[id1,:], 'r--', linewidth = 2, label = 'Prediction')
+    lower = VARIABLE_pred[id1,:] - 2.0*np.sqrt(Sigma_pred_variable[id1,:])
+    upper = VARIABLE_pred[id1,:] + 2.0*np.sqrt(Sigma_pred_variable[id1,:])
     plt.fill_between(x.flatten(), lower.flatten(), upper.flatten(), 
                  facecolor='orange', alpha=0.5, label="Two std band")
     ax.set_xlabel('$x$')
@@ -158,33 +159,35 @@ def plot_pred_data(y_pred_variable,Exact_variable,variable,viz_dir,X_star,x,t,X,
     ax.set_xlim([-0.1,1.1])
     ax.set_ylim([-0.1,1.1])
 
+    id2=75
     ax = plt.subplot(gs1[0, 1])
-    ax.plot(x,Exact_variable[75,:], 'b-', linewidth = 2, label = 'Exact')       
-    ax.plot(x,VARIABLE_pred[75,:], 'r--', linewidth = 2, label = 'Prediction')
-    lower = VARIABLE_pred[75,:] - 2.0*np.sqrt(Sigma_pred_variable[75,:])
-    upper = VARIABLE_pred[75,:] + 2.0*np.sqrt(Sigma_pred_variable[75,:])
+    ax.plot(x,Exact_variable[id2,:], 'b-', linewidth = 2, label = 'Exact')       
+    ax.plot(x,VARIABLE_pred[id2,:], 'r--', linewidth = 2, label = 'Prediction')
+    lower = VARIABLE_pred[id2,:] - 2.0*np.sqrt(Sigma_pred_variable[id2,:])
+    upper = VARIABLE_pred[id2,:] + 2.0*np.sqrt(Sigma_pred_variable[id2,:])
     plt.fill_between(x.flatten(), lower.flatten(), upper.flatten(), 
                  facecolor='orange', alpha=0.5, label="Two std band")
     ax.set_xlabel('$x$')
     ax.set_ylabel('${}(t,x)$'.format(variable))
     ax.axis('square')
-    ax.set_xlim([-0.1,1.1])
-    ax.set_ylim([-0.1,1.1])
+    #ax.set_xlim([-0.1,1.1])
+    #ax.set_ylim([-0.1,1.1])
     ax.set_title('$t = 0.234$', fontsize = 10)
     ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.35), ncol=5, frameon=False)
 
+    id3=-1
     ax = plt.subplot(gs1[0, 2])
-    ax.plot(x,Exact_variable[320,:], 'b-', linewidth = 2, label = 'Exact')       
-    ax.plot(x,VARIABLE_pred[320,:], 'r--', linewidth = 2, label = 'Prediction')
-    lower = VARIABLE_pred[320,:] - 2.0*np.sqrt(Sigma_pred_variable[320,:])
-    upper = VARIABLE_pred[320,:] + 2.0*np.sqrt(Sigma_pred_variable[320,:])
+    ax.plot(x,Exact_variable[id3,:], 'b-', linewidth = 2, label = 'Exact')       
+    ax.plot(x,VARIABLE_pred[id3,:], 'r--', linewidth = 2, label = 'Prediction')
+    lower = VARIABLE_pred[id3,:] - 2.0*np.sqrt(Sigma_pred_variable[id3,:])
+    upper = VARIABLE_pred[id3,:] + 2.0*np.sqrt(Sigma_pred_variable[id3,:])
     plt.fill_between(x.flatten(), lower.flatten(), upper.flatten(), 
                      facecolor='orange', alpha=0.5, label="Two std band")
     ax.set_xlabel('$x$')
     ax.set_ylabel('${}(t,x)$'.format(variable))
     ax.axis('square')
-    ax.set_xlim([-0.1,1.1])
-    ax.set_ylim([-0.1,1.1])     
+    #ax.set_xlim([-0.1,1.1])
+    #ax.set_ylim([-0.1,1.1])     
     ax.set_title('$t = 1.0$', fontsize = 10)
     plt.savefig(save_at+'_prediction',
                     dpi=300,
@@ -235,10 +238,10 @@ def main(experiment_dir, result_dir, mode="debug", sudoku=True, interval="predic
 
     y_true_rho = np.loadtxt(os.path.join(result_dir, "targets_test_rho.csv"), delimiter=",", dtype=np.float32)
     y_pred_rho = np.loadtxt(os.path.join(result_dir, "predictions_test_rho.csv"), delimiter=",", dtype=np.float32)
-    # kl_rho = np.loadtxt(os.path.join(result_dir, "kl_rho_test.csv"), delimiter=",", dtype=np.float32)
+    kl_rho = np.loadtxt(os.path.join(result_dir, "kl_rho_test.csv"), delimiter=",", dtype=np.float32)
     y_true_u = np.loadtxt(os.path.join(result_dir, "targets_test_u.csv"), delimiter=",", dtype=np.float32)
     y_pred_u = np.loadtxt(os.path.join(result_dir, "predictions_test_u.csv"), delimiter=",", dtype=np.float32)
-    # kl_u = np.loadtxt(os.path.join(result_dir, "kl_u_test.csv"), delimiter=",", dtype=np.float32)
+    kl_u = np.loadtxt(os.path.join(result_dir, "kl_u_test.csv"), delimiter=",", dtype=np.float32)
 
     alias = os.path.basename(result_dir)
     viz_dir = os.path.join(experiment_dir, "viz", alias)
@@ -250,31 +253,31 @@ def main(experiment_dir, result_dir, mode="debug", sudoku=True, interval="predic
 
 
 
-    # # sudoku
-    # if sudoku is True:
-    #     for choose_lowest_kl in COMPARE_HIST_SUDOKU["choose_lowest_kl"]:
-    #         level = COMPARE_HIST_SUDOKU["level"]
-    #         width = COMPARE_HIST_SUDOKU["width"]
-    #         height = COMPARE_HIST_SUDOKU["height"]
-    #         save_at_rho = os.path.join(viz_dir,
-    #                                f"(rho)-mode={mode}-sudoku-level={level:d}-lowest_kl={choose_lowest_kl:d}.png")
-    #         save_at_u = os.path.join(viz_dir,
-    #                                f"(u)-mode={mode}-sudoku-level={level:d}-lowest_kl={choose_lowest_kl:d}.png")
-    #         #save_at = os.path.join(viz_dir,
-    #         #                       f"-mode={mode}-sudoku-level={level:d}-lowest_kl={choose_lowest_kl:d}.png")
-    #         if os.path.exists(save_at_rho) & (force_overwrite is False):
-    #         #if os.path.exists(save_at) & (force_overwrite is False):
-    #             print('PASS')
-    #             pass
-    #         else:
-    #             compare_hist_sudoku('rho',y_true_rho, y_pred_rho, kl_rho, level=level,
-    #                                 width=width, height=height, mode=mode,
-    #                                 choose_lowest_kl=choose_lowest_kl,
-    #                                 save_at=save_at_rho)
-    #             compare_hist_sudoku('u',y_true_u, y_pred_u, kl_u, level=level,
-    #                                 width=width, height=height, mode=mode,
-    #                                 choose_lowest_kl=choose_lowest_kl,
-    #                                 save_at=save_at_u)
+    # sudoku
+    if sudoku is True:
+        for choose_lowest_kl in COMPARE_HIST_SUDOKU["choose_lowest_kl"]:
+            level = COMPARE_HIST_SUDOKU["level"]
+            width = COMPARE_HIST_SUDOKU["width"]
+            height = COMPARE_HIST_SUDOKU["height"]
+            save_at_rho = os.path.join(viz_dir,
+                                   f"(rho)-mode={mode}-sudoku-level={level:d}-lowest_kl={choose_lowest_kl:d}.png")
+            save_at_u = os.path.join(viz_dir,
+                                   f"(u)-mode={mode}-sudoku-level={level:d}-lowest_kl={choose_lowest_kl:d}.png")
+            save_at = os.path.join(viz_dir,
+                                 f"-mode={mode}-sudoku-level={level:d}-lowest_kl={choose_lowest_kl:d}.png")
+            if os.path.exists(save_at_rho) & (force_overwrite is False):
+            ##if os.path.exists(save_at) & (force_overwrite is False):
+                print('PASS')
+                pass
+            else:
+                compare_hist_sudoku('rho',y_true_rho, y_pred_rho, kl_rho, level=level,
+                                    width=width, height=height, mode=mode,
+                                    choose_lowest_kl=choose_lowest_kl,
+                                    save_at=save_at_rho)
+                compare_hist_sudoku('u',y_true_u, y_pred_u, kl_u, level=level,
+                                    width=width, height=height, mode=mode,
+                                    choose_lowest_kl=choose_lowest_kl,
+                                  save_at=save_at_u)
 
 
 if __name__ == "__main__":

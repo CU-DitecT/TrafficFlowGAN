@@ -339,6 +339,7 @@ def test(model, test_feature, test_target,
     for i in tqdm(range(0, n_samples )):
       rho_tensor, u_tensor = model.test(torch.from_numpy(test_feature))
       samples_mean_rho[:,i:i+1],samples_mean_u[:,i:i+1] = rho_tensor.detach().numpy(), u_tensor.detach().numpy()
+    
     rho_star=test_target[:,0][:,None]
     u_star=test_target[:,1][:,None]
     exact_sample_rho = rho_star
@@ -376,6 +377,8 @@ def test(model, test_feature, test_target,
 
     metrics_dict = dict()
     kl = None
+    kl_u = None
+    kl_rho = None
     for k, func in metric_functions.items():
         if k == 'nlpd':
             use_mean = True if args.nlpd_use_mean == "True" else False
