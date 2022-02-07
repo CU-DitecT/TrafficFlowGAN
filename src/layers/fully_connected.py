@@ -25,7 +25,7 @@ class Normalization(nn.Module):
         if self.NNz:
             norm_tensor = (tensors - self.mean[2:4]) / self.std[2:4]
         else:
-            norm_tensor = (tensors - torch.cat((torch.tensor([0,0]),self.mean[2:4]),0)) / torch.cat((torch.tensor([1,1]),self.std[2:4]),0)
+            norm_tensor = (tensors - torch.cat((torch.tensor([0,0]).to(self.device),self.mean[2:4]),0)) / torch.cat((torch.tensor([1,1]).to(self.device),self.std[2:4]),0)
         return norm_tensor
 
 def instantiate_activation_function(function_name):
@@ -46,8 +46,8 @@ def get_fully_connected_layer(input_dim, output_dim, n_hidden, hidden_dim,
                               std = 1,
                               NNz= False):
     ## hard code without normalization
-    modules = [ Normalization(mean, std, device, NNz), nn.Linear(input_dim, hidden_dim, device=device)]
-    # modules = [nn.Linear(input_dim, hidden_dim, device=device)]
+    # modules = [ Normalization(mean, std, device, NNz), nn.Linear(input_dim, hidden_dim, device=device)]
+    modules = [nn.Linear(input_dim, hidden_dim, device=device)]
     activation = instantiate_activation_function(activation_type)
     if activation is not None:
         modules.append(activation)

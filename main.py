@@ -7,12 +7,15 @@ import numpy as np
 import torch
 
 from src.utils import Params, save_checkpoint, load_checkpoint
-from src.models.flow import RealNVP
-from src.models.nn import RealNVP_lz
-# from src.metrics import instantiate_losses, instantiate_metrics, functionalize_metrics
+# from src.models.flow import RealNVP
+# from src.models.nn import RealNVP_lz
+# from src.models.flow_learning_z_cnn import RealNVP_lz
+from src.models.flow_learning_z import RealNVP_lz
+from src.metrics import instantiate_losses, instantiate_metrics, functionalize_metrics
 from src.utils import set_logger, delete_file_or_folder
 from src.training import training, test, test_multiple_rounds
 from src.dataset.arz_data import arz_data_loader
+from src.dataset.arz_data_pixel import arz_pixel_data_loader
 from src.dataset.lwr_data import lwr_data_loader
 from src.dataset.lwr_data_with_u import lwr_data_loader_with_u
 from src.dataset.burgers_data import burgers_data_loader
@@ -120,6 +123,16 @@ if __name__ == "__main__":
         data_loaded = arz_data_loader(params.data['loop_number'], params.data['noise_scale'],
                                       params.data['noise_number'])
         train_feature, train_label, train_feature_phy, x, t,idx = data_loaded.load_data()
+        test_feature, Exact_rho, Exact_u = data_loaded.load_test()
+        mean, std = data_loaded.load_bound()
+        test_label_rho = Exact_rho.flatten()[:, None]
+        test_label_u = Exact_u.flatten()[:, None]
+        test_label = np.concatenate([test_label_rho, test_label_u], 1)
+
+    elif params.data['type'] == 'arz_pixel':
+        data_loaded = arz_pixel_data_loader(params.data['loop_number'], params.data['noise_scale'],
+                                      params.data['noise_number'])
+        train_feature, train_label, train_feature_phy, x, t, idx = data_loaded.load_data()
         test_feature, Exact_rho, Exact_u = data_loaded.load_test()
         mean, std = data_loaded.load_bound()
         test_label_rho = Exact_rho.flatten()[:, None]
@@ -252,7 +265,9 @@ if __name__ == "__main__":
         discriminator = Discriminator((96,25,2)).to(device)
     # create optimizer
     if params.affine_coupling_layers["optimizer"]["type"] == "Adam":
-        optimizer = torch.optim.Adam([p for p in model.parameters() if p.requires_grad == True]
+        parameters = [p for n, p in model.named_parameters() if (p.requires_grad == True)]
+        parameters_model = [p for n, p in model.named_parameters() if (p.requires_grad == True and "model_D" not in n)]
+        optimizer = torch.optim.Adam(parameters_model
                                      , **params.affine_coupling_layers["optimizer"]["kwargs"])
     else:
         raise ValueError("optimizer not in searching domain.")
@@ -297,6 +312,8 @@ if __name__ == "__main__":
         logging.info("Starting training for {} epoch(s)".format(params.epochs))
         training(model, optimizer,discriminator, train_feature, train_label, train_feature_phy,device,
                  restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
+                 loops = params.data['loop_number'],
+                 noise_scale = params.data['noise_scale'],
                  physics=physics,
                  physics_optimizer=optimizer_physics,
                  experiment_dir=args.experiment_dir,
@@ -304,12 +321,15 @@ if __name__ == "__main__":
                  verbose_frequency=params.verbose_frequency,
                  save_each_epoch=params.save_each_epoch,
                  verbose_computation_time = params.verbose_computation_time
+
                  )
 
     if args.mode == "train_and_test":
         logging.info("Starting training for {} epoch(s)".format(params.epochs))
         training(model, optimizer, discriminator, train_feature, train_label,device,
                  restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
+                 loops=params.data['loop_number'],
+                 noise_scale=params.data['noise_scale'],
                  physics=physics,
                  physics_optimizer=optimizer_physics,
                  experiment_dir=args.experiment_dir,

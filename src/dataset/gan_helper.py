@@ -4,11 +4,21 @@ import torch
 
 class gan_helper():
 
-    def __init__(self, Noise_scale):
+    def __init__(self, Noise_scale, N_loop):
 
+        self.N_loop = N_loop
         self.noise = Noise_scale
         self.shape = (96,24)
         self.load_arz()
+        if self.N_loop>1:
+            gap = int(240.0/(self.N_loop-1))
+            loopidx = [i*gap for i in range(self.N_loop-1)]
+            if self.N_loop ==4: loopidx[-1]=120
+            loopidx.append(239)
+        else:
+            loopidx = [0]
+
+        self.span = np.array(loopidx)//10
 
     def load_arz(self):
 
@@ -42,12 +52,11 @@ class gan_helper():
         self.X_T_low_d = np.hstack((X_low_d.flatten()[:,None], T_low_d.flatten()[:,None])).astype(np.float32)
 
     def load_ground_truth(self):
-
-        return np.expand_dims((self.rho_u_low_d + self.noise * np.random.randn(self.rho_u_low_d.shape[0], self.rho_u_low_d.shape[1],self.rho_u_low_d.shape[2])),axis=0).astype(np.float32)
-
+        real_figure = np.expand_dims((self.rho_u_low_d + self.noise * np.random.randn(self.rho_u_low_d.shape[0], self.rho_u_low_d.shape[1],self.rho_u_low_d.shape[2])),axis=0).astype(np.float32)
+        return real_figure[:,:,:,self.span], real_figure
     def reshape_to_figure(self, rho, u):
         rho = rho.reshape(-1,self.shape[1]+1)
         u = u.reshape(-1,self.shape[1]+1)
         rho_u = torch.stack((rho, u), axis=0)
-        return rho_u.unsqueeze(0)
+        return rho_u.unsqueeze(0)[:,:,:,self.span], rho_u.unsqueeze(0)
 

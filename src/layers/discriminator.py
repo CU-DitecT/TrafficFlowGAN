@@ -38,7 +38,7 @@ class Discriminator(torch.nn.Module):
             torch.nn.BatchNorm2d(24),
             # torch.nn.LeakyReLU(0.2, inplace=False),
             torch.nn.Tanh(),
-            torch.nn.Conv2d(24, 1, (8,4), 1, 0, bias=False),
+            torch.nn.Conv2d(24, 1, (8,3), 1, 0, bias=False),
         )
 
         self.model_x_t = torch.nn.Sequential(

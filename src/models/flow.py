@@ -76,7 +76,7 @@ class RealNVP(nn.Module):
 
     def log_prob(self, x, c):
         z, log_p, activation = self.f(x, c)
-        return self.prior.log_prob(z.float())  + log_p , activation
+        return self.prior.log_prob(z.float()) + log_p , activation
 
     def eval(self, c):
         torch.manual_seed(1)
