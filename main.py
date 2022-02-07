@@ -539,7 +539,7 @@ if __name__ == "__main__":
                                             f"idx.csv")
             np.savetxt(save_path_idx, idx , delimiter=",", fmt="%d")
             print('test done')
-    elif params.data['type'] == 'arz_FD':
+    if params.physics['type'] == 'arz_FD':
         if (args.mode == "train") or (args.mode == "train_and_test"):
             logging.info("Starting training for {} epoch(s)".format(params.epochs))
             training(model, optimizer,discriminator, train_feature, train_label, train_feature_phy,device,FD_plot_freq=args.FD_plot_freq,
