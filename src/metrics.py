@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.stats import multivariate_normal
 # from sklearn.metrics import mean_squared_error, mean_absolute_error
-from src.metrics_factory.get_KL import get_KL
+from src.metrics_factory.get_KL import get_KL, get_fake_KL
 from src.metrics_factory.get_NLPD import get_NLPD, get_NLPD_old
 import torch
 
@@ -36,6 +36,7 @@ def instantiate_metrics(metric_name):
         "mae":torch.nn.L1Loss(),
         #"kl": torch.nn.BCEWithLogitsLoss(),
         "kl": lambda y, y_pred: get_KL(y, y_pred),
+        "fake_kl": lambda y, y_pred: get_fake_KL(y, y_pred),
         "nlpd": get_NLPD,
         "nll": None
     }

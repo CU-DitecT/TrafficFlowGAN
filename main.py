@@ -671,7 +671,7 @@ if __name__ == "__main__":
             model_alias = args.experiment_dir.split('/')[-1]
             test_multiple_rounds(model, test_feature, test_label, test_rounds=args.test_rounds, save_dir=save_dir,
                                  model_alias=model_alias,
-                                 restore_from=restore_from, metric_functions=metric_fns, n_samples=args.test_sample,
+                                 restore_from=restore_from, metric_functions=metric_fns, n_samples=int(args.test_sample),
                                  noise=args.noise, args=args)
             save_path_x = os.path.join(save_dir, model_alias,
                                             f"x.csv")
@@ -702,7 +702,7 @@ if __name__ == "__main__":
                                  model_alias=model_alias,
                                  restore_from=restore_from,
                                  metric_functions=metric_fns,
-                                 n_samples=args.test_sample,
+                                 n_samples=int(args.test_sample),
                                  noise=args.noise,
                                  args=args)
         

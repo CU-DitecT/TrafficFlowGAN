@@ -17,7 +17,7 @@ parser.add_argument('--result_dir', default='experiments/ngsim_learning_z/test_r
                     help="folder to viz") 
 parser.add_argument('--mode', default='debug',
                     help="mode debug keeps more detail; mode paper is clean' ")
-parser.add_argument('--sudoku', default=False, action='store_true',
+parser.add_argument('--sudoku', default=True, action='store_true',
                     help="while to plot sudoku")
 parser.add_argument('--force_overwrite', default=False, action='store_true',
                     help="For debug. Force to clean the 'figure' folder each running ")
@@ -155,9 +155,9 @@ def plot_pred_data(y_pred_variable,Exact_variable,variable,viz_dir,X_star,x,t,X,
     ax.set_xlabel('$x$')
     ax.set_ylabel('${}(t,x)$'.format(variable))    
     ax.set_title('$t = 0.078$', fontsize = 10)
-    ax.axis('square')
-    ax.set_xlim([-0.1,1.1])
-    ax.set_ylim([-0.1,1.1])
+    # ax.axis('square')
+    # ax.set_xlim([-0.1,1.1])
+    # ax.set_ylim([-0.1,1.1])
 
     id2=75
     ax = plt.subplot(gs1[0, 1])
@@ -169,7 +169,7 @@ def plot_pred_data(y_pred_variable,Exact_variable,variable,viz_dir,X_star,x,t,X,
                  facecolor='orange', alpha=0.5, label="Two std band")
     ax.set_xlabel('$x$')
     ax.set_ylabel('${}(t,x)$'.format(variable))
-    ax.axis('square')
+    # ax.axis('square')
     #ax.set_xlim([-0.1,1.1])
     #ax.set_ylim([-0.1,1.1])
     ax.set_title('$t = 0.234$', fontsize = 10)
@@ -185,7 +185,7 @@ def plot_pred_data(y_pred_variable,Exact_variable,variable,viz_dir,X_star,x,t,X,
                      facecolor='orange', alpha=0.5, label="Two std band")
     ax.set_xlabel('$x$')
     ax.set_ylabel('${}(t,x)$'.format(variable))
-    ax.axis('square')
+    # ax.axis('square')
     #ax.set_xlim([-0.1,1.1])
     #ax.set_ylim([-0.1,1.1])     
     ax.set_title('$t = 1.0$', fontsize = 10)
@@ -238,10 +238,10 @@ def main(experiment_dir, result_dir, mode="debug", sudoku=True, interval="predic
 
     y_true_rho = np.loadtxt(os.path.join(result_dir, "targets_test_rho.csv"), delimiter=",", dtype=np.float32)
     y_pred_rho = np.loadtxt(os.path.join(result_dir, "predictions_test_rho.csv"), delimiter=",", dtype=np.float32)
-    # kl_rho = np.loadtxt(os.path.join(result_dir, "kl_rho_test.csv"), delimiter=",", dtype=np.float32)
+    kl_rho = np.loadtxt(os.path.join(result_dir, "kl_rho_test.csv"), delimiter=",", dtype=np.float32)
     y_true_u = np.loadtxt(os.path.join(result_dir, "targets_test_u.csv"), delimiter=",", dtype=np.float32)
     y_pred_u = np.loadtxt(os.path.join(result_dir, "predictions_test_u.csv"), delimiter=",", dtype=np.float32)
-    # kl_u = np.loadtxt(os.path.join(result_dir, "kl_u_test.csv"), delimiter=",", dtype=np.float32)
+    kl_u = np.loadtxt(os.path.join(result_dir, "kl_u_test.csv"), delimiter=",", dtype=np.float32)
 
     alias = os.path.basename(result_dir)
     viz_dir = os.path.join(experiment_dir, "viz", alias)

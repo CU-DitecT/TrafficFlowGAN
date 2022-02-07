@@ -22,7 +22,14 @@ def get_kde(data):
     return X_marginal, gkde
     
     
-    
+
+def get_fake_KL(real_data, sim_data):
+    KL = []
+    for i in tqdm(range(real_data.shape[0])):
+        kl = 1.23
+        KL.append(kl)
+    return KL
+
  
 def get_KL(real_data, sim_data):
     # real_data: N*M 2-d array. Every row is the distribution of rho for ONE (x,t)

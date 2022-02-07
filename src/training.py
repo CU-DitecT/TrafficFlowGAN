@@ -385,8 +385,8 @@ def test(model, test_feature, test_target,
             use_mean = True if args.nlpd_use_mean == "True" else False
             metrics_dict[k] = [func(test_target, test_prediction,
                                    use_mean = use_mean,
-                                   n_bands = args.nlpd_n_bands)]            
-        elif k == "kl":
+                                   n_bands = args.nlpd_n_bands)]
+        elif (k == "kl") or (k == "fake_kl"):
             
             ###BCE with logit:
             #kl = func(torch.from_numpy(test_target), torch.from_numpy(test_prediction)).item()
@@ -460,8 +460,8 @@ def test_multiple_rounds(model, test_feature,test_label, test_rounds=1,
     np.savetxt(save_path_feature, test_feature, delimiter=",")
     np.savetxt(save_path_target_rho, exact_sample_rho, delimiter=",")
     np.savetxt(save_path_target_u, exact_sample_u, delimiter=",")
-#    np.savetxt(save_path_kl_rho, kl_rho, delimiter=",")
-#     np.savetxt(save_path_kl_u, kl_u, delimiter=",")
+    np.savetxt(save_path_kl_rho, kl_rho, delimiter=",")
+    np.savetxt(save_path_kl_u, kl_u, delimiter=",")
 
 
 
