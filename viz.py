@@ -151,13 +151,16 @@ def plot_pred_data(y_pred_variable,Exact_variable,variable,viz_dir,X_star,x,t,X,
     lower = VARIABLE_pred[id1,:] - 2.0*np.sqrt(Sigma_pred_variable[id1,:])
     upper = VARIABLE_pred[id1,:] + 2.0*np.sqrt(Sigma_pred_variable[id1,:])
     plt.fill_between(x.flatten(), lower.flatten(), upper.flatten(), 
-                 facecolor='orange', alpha=0.5, label="Two std band")
+                facecolor='orange', alpha=0.5, label="Two std band")
     ax.set_xlabel('$x$')
     ax.set_ylabel('${}(t,x)$'.format(variable))    
     ax.set_title('$t = 0.078$', fontsize = 10)
-    # ax.axis('square')
-    # ax.set_xlim([-0.1,1.1])
-    # ax.set_ylim([-0.1,1.1])
+
+    ax.set_aspect(1.0/ax.get_data_ratio(), adjustable='box')
+    #ax.axis('square')
+    #ax.set_xlim([-0.1,1.1])
+    #ax.set_ylim([-0.1,1.1])
+
 
     id2=75
     ax = plt.subplot(gs1[0, 1])
@@ -169,7 +172,10 @@ def plot_pred_data(y_pred_variable,Exact_variable,variable,viz_dir,X_star,x,t,X,
                  facecolor='orange', alpha=0.5, label="Two std band")
     ax.set_xlabel('$x$')
     ax.set_ylabel('${}(t,x)$'.format(variable))
-    # ax.axis('square')
+
+    ax.set_aspect(1.0/ax.get_data_ratio(), adjustable='box')
+    #ax.axis('square')
+
     #ax.set_xlim([-0.1,1.1])
     #ax.set_ylim([-0.1,1.1])
     ax.set_title('$t = 0.234$', fontsize = 10)
@@ -182,13 +188,17 @@ def plot_pred_data(y_pred_variable,Exact_variable,variable,viz_dir,X_star,x,t,X,
     lower = VARIABLE_pred[id3,:] - 2.0*np.sqrt(Sigma_pred_variable[id3,:])
     upper = VARIABLE_pred[id3,:] + 2.0*np.sqrt(Sigma_pred_variable[id3,:])
     plt.fill_between(x.flatten(), lower.flatten(), upper.flatten(), 
-                     facecolor='orange', alpha=0.5, label="Two std band")
+                    facecolor='orange', alpha=0.5, label="Two std band")
     ax.set_xlabel('$x$')
     ax.set_ylabel('${}(t,x)$'.format(variable))
-    # ax.axis('square')
+
+    ax.set_aspect(1.0/ax.get_data_ratio(), adjustable='box')
+    #ax.axis('square')
+
     #ax.set_xlim([-0.1,1.1])
     #ax.set_ylim([-0.1,1.1])     
     ax.set_title('$t = 1.0$', fontsize = 10)
+    #fig.tight_layout()
     plt.savefig(save_at+'_prediction',
                     dpi=300,
                     bbox_inches="tight")

@@ -5,14 +5,14 @@
         "c_dim": 2,
         "n_transformation": 6,
         "s_net": {
-            "n_hidden": 2,
-            "hidden_dim": 256,
+            "n_hidden": 5,
+            "hidden_dim": 128,
             "activation_type": "leaky_relu",
             "last_activation_type": "tanh"
         },
         "t_net": {
-            "n_hidden": 2,
-            "hidden_dim": 256,
+            "n_hidden": 5,
+            "hidden_dim": 128,
             "activation_type": "leaky_relu",
             "last_activation_type": "tanh"
         },
@@ -31,7 +31,7 @@
         "optimizer": {
             "type": "Adam",
             "kwargs": {
-                "lr": 0.00001
+                "lr": 0.001
             }
         }
     },
