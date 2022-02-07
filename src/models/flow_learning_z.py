@@ -56,7 +56,7 @@ class RealNVP_lz(nn.Module):
         ## hard code for Ngsim normalization
 #         self.mean = np.array([2.0758793e-01, 1.0194696e+01])
 #         self.std = np.array([7.2862007e-02, 3.8798647e+00])
-        x = (x-self.mean[:2])/self.std[:2]
+
         if c.shape[1]==2:
             activation = {"x1": x[:, 0],
                       "x2": x[:, 1],
@@ -66,6 +66,7 @@ class RealNVP_lz(nn.Module):
             activation = {"x1": x[:, 0],
                       "x2": x[:, 1],
                       "c_1": c[:,0]}
+        x = (x - self.mean[:2]) / self.std[:2]
         z = torch.from_numpy(x.astype(np.float32)).float().to(self.device) # z = x
         if torch.is_tensor(c):
             c_ = c.to(self.device)
@@ -131,6 +132,7 @@ class RealNVP_lz(nn.Module):
             c_ = torch.from_numpy(c).to(self.device)
         # log_p = self.prior.log_prob(z, c)
         x = self.g(z, c_)
+        x = x * torch.from_numpy(self.std[:2]).to(self.device) + torch.from_numpy(self.mean[:2]).to(self.device)
         activation = {"x1_eval": x[:, 0].cpu().detach().numpy(),
                       "x2_eval": x[:, 1].cpu().detach().numpy()}
         return activation
