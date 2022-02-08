@@ -43,10 +43,11 @@ class ngsim_data_loader():
         # rhoMat_smooth = scipy.ndimage.uniform_filter(rhoMat, size=5, mode='nearest')
         # uMat_smooth = scipy.ndimage.uniform_filter(uMat, size=5, mode='nearest')
 
+        rhoMat =rhoMat *50
         # update 0203 zm: cut the ngsim
-        rhoMat = rhoMat[:,:170]
-        uMat = uMat[:,:170]
-        tt = tt[:170,:]
+        #rhoMat = rhoMat[:,:170]
+        #uMat = uMat[:,:170]
+        #tt = tt[:170,:]
 
 
 

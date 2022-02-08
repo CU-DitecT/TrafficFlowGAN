@@ -51,7 +51,7 @@
             }
         },
         "meta_params_value": {
-            "mu_rhomax": 0.667,
+            "mu_rhomax": 33.35,
             "mu_umax": 13.511,
             "mu_tau": 27.5,
             "sigma_rhomax": 0,
@@ -92,7 +92,7 @@
     "data": {
         "type": "ngsim",
         "loop_number": 18,
-        "noise_scale": 0.02,
+        "noise_scale": 0.2,
         "noise_number": 20
     },
     "metrics": [

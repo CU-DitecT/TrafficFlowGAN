@@ -487,7 +487,7 @@ if __name__ == "__main__":
             test_multiple_rounds(model, test_feature, test_label, test_rounds=args.test_rounds, save_dir=save_dir,
                                  model_alias=model_alias,
                                  restore_from=restore_from, metric_functions=metric_fns, n_samples=args.test_sample,
-                                 noise=args.noise, args=args)
+                                 noise= params.data['noise_scale'], args=args)
             save_path_x = os.path.join(save_dir, model_alias,
                                             f"x.csv")
             save_path_t = os.path.join(save_dir, model_alias,
@@ -518,7 +518,7 @@ if __name__ == "__main__":
                                  restore_from=restore_from,
                                  metric_functions=metric_fns,
                                  n_samples=args.test_sample,
-                                 noise=args.noise,
+                                 noise= params.data['noise_scale'],
                                  args=args)
         
             save_path_x = os.path.join(save_dir, model_alias,
@@ -579,7 +579,7 @@ if __name__ == "__main__":
             test_multiple_rounds(model, test_feature, test_label, test_rounds=args.test_rounds, save_dir=save_dir,
                                  model_alias=model_alias,
                                  restore_from=restore_from, metric_functions=metric_fns, n_samples=args.test_sample,
-                                 noise=args.noise, args=args)
+                                 noise= params.data['noise_scale'], args=args)
             save_path_x = os.path.join(save_dir, model_alias,
                                             f"x.csv")
             save_path_t = os.path.join(save_dir, model_alias,
@@ -610,7 +610,7 @@ if __name__ == "__main__":
                                  restore_from=restore_from,
                                  metric_functions=metric_fns,
                                  n_samples=args.test_sample,
-                                 noise=args.noise,
+                                 noise= params.data['noise_scale'],
                                  args=args)
         
             save_path_x = os.path.join(save_dir, model_alias,
@@ -672,7 +672,7 @@ if __name__ == "__main__":
             test_multiple_rounds(model, test_feature, test_label, test_rounds=args.test_rounds, save_dir=save_dir,
                                  model_alias=model_alias,
                                  restore_from=restore_from, metric_functions=metric_fns, n_samples=int(args.test_sample),
-                                 noise=args.noise, args=args)
+                                 noise= params.data['noise_scale'], args=args)
             save_path_x = os.path.join(save_dir, model_alias,
                                             f"x.csv")
             save_path_t = os.path.join(save_dir, model_alias,
@@ -703,7 +703,7 @@ if __name__ == "__main__":
                                  restore_from=restore_from,
                                  metric_functions=metric_fns,
                                  n_samples=int(args.test_sample),
-                                 noise=args.noise,
+                                 noise= params.data['noise_scale'],
                                  args=args)
         
             save_path_x = os.path.join(save_dir, model_alias,
