@@ -39,9 +39,9 @@ else:
     logging.info("cuda is not available")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--experiment_dir', default='experiments/ngsim_learning_z', #lwr_with_u_learning_z
+parser.add_argument('--experiment_dir', default='experiments/ngsim_learning_z_phy_FD_fix', #lwr_with_u_learning_z
                     help="Directory containing experiment_setting.json")
-parser.add_argument('--restore_from', default= None, #"experiments/lwr_learning_z/weights/last.path.tar",
+parser.add_argument('--restore_from', default= "experiments/ngsim_learning_z_phy_FD_fix/weights/last.path.tar", #"experiments/lwr_learning_z/weights/last.path.tar",
                     help="Optional, file location containing weights to reload")
 parser.add_argument('--mode', default='train',
                     help="train, test, or train_and_test")
@@ -50,7 +50,7 @@ parser.add_argument('--noise', default=0.2)
 
 parser.add_argument('--test_sample', default=100)  # 100
 
-parser.add_argument('--test_rounds', default=3)  # 3
+parser.add_argument('--test_rounds', default=1)  # 3
 parser.add_argument('--nlpd_use_mean', default='True')
 parser.add_argument('--nlpd_n_bands', default=1000)
 parser.add_argument('--force_overwrite', default=False, action='store_true',

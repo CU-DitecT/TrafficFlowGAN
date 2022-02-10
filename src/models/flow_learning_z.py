@@ -141,7 +141,10 @@ class RealNVP_lz(nn.Module):
         #torch.manual_seed(1)
         z = self.prior.sample((c.shape[0], 1)).to(self.device)
         z = torch.squeeze(z)
-        miu,sigma = self.NN_z(c)
+        #miu,sigma = self.NN_z(c)
+        miu,_ = self.NN_z(c)
+        sigma=0.0
+
         z_cali = z*sigma + miu
         # log_p = self.prior.log_prob(z, c)
         x = self.g(z_cali, c)

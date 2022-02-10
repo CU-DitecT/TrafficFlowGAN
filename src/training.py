@@ -64,12 +64,12 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
     if restore_from is not None:
         assert os.path.isfile(restore_from), "restore_from is not a file"
         # restore model
-        begin_at_epoch = utils.load_checkpoint(restore_from, model, optimizer, begin_at_epoch)
+        begin_at_epoch = utils.load_checkpoint(restore_from, model, optimizer, begin_at_epoch) #torch.device('cpu')
         if physics is not None:
             str_idx = restore_from.index('.tar')
             restore_from_physics=restore_from[:str_idx] + '.physics' + restore_from[str_idx:]  
-            assert os.path.isfile(restore_from_physics), "restore_from_physics is not a file"
-            utils.load_checkpoint(restore_from_physics, physics,physics_optimizer, begin_at_epoch)
+            #assert os.path.isfile(restore_from_physics), "restore_from_physics is not a file"
+            #utils.load_checkpoint(restore_from_physics, physics,physics_optimizer, begin_at_epoch)
         logging.info(f"Restoring parameters from {restore_from}, restored epoch is {begin_at_epoch:d}")
 
 
