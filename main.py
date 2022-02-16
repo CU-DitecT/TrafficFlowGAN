@@ -8,7 +8,7 @@ import torch
 
 from src.utils import Params, save_checkpoint, load_checkpoint
 from src.models.flow import RealNVP
-from src.models.flow_learning_z import RealNVP_lz
+from src.models.flow_learning_z import RealNVP_lz,MO_RealNVP_lz
 # from src.metrics import instantiate_losses, instantiate_metrics, functionalize_metrics
 from src.utils import set_logger, delete_file_or_folder
 from src.training import training, test, test_multiple_rounds
@@ -39,9 +39,12 @@ else:
     logging.info("cuda is not available")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--experiment_dir', default='experiments/ngsim_learning_z_phy_FD_fix', #lwr_with_u_learning_z
+parser.add_argument('--experiment_dir', default='experiments/ngsim_learning_z_MO', #lwr_with_u_learning_z
                     help="Directory containing experiment_setting.json")
-parser.add_argument('--restore_from', default= "experiments/ngsim_learning_z_phy_FD_fix/weights/last.path.tar", #"experiments/lwr_learning_z/weights/last.path.tar",
+parser.add_argument('--MO', default=True,
+                    help="Use RealNVP or MORealNVP")  # 100
+
+parser.add_argument('--restore_from', default= None, #"experiments/lwr_learning_z/weights/last.path.tar",
                     help="Optional, file location containing weights to reload")
 parser.add_argument('--mode', default='train',
                     help="train, test, or train_and_test")
@@ -212,14 +215,24 @@ if __name__ == "__main__":
                   params.affine_coupling_layers["t_net"]["n_hidden"],
                   params.affine_coupling_layers["t_net"]["hidden_dim"])
 
-        s_kwargs = {"activation_type": params.affine_coupling_layers["s_net"]["activation_type"],
-                    "last_activation_type": params.affine_coupling_layers["s_net"]["last_activation_type"],
-                    "device":device}
+        if "BN" in params.affine_coupling_layers["s_net"]:
+            s_kwargs = {"activation_type": params.affine_coupling_layers["s_net"]["activation_type"],
+                        "last_activation_type": params.affine_coupling_layers["s_net"]["last_activation_type"],
+                        "device":device,
+                        "BN":params.affine_coupling_layers["s_net"]["BN"]=='True'}
+            t_kwargs = {"activation_type": params.affine_coupling_layers["t_net"]["activation_type"],
+                        "last_activation_type": params.affine_coupling_layers["t_net"]["last_activation_type"],
+                        "device":device,
+                        "BN":params.affine_coupling_layers["t_net"]["BN"]=='True'}            
+        else:
+            s_kwargs = {"activation_type": params.affine_coupling_layers["s_net"]["activation_type"],
+                        "last_activation_type": params.affine_coupling_layers["s_net"]["last_activation_type"],
+                        "device":device}
 
-        t_kwargs = {"activation_type": params.affine_coupling_layers["t_net"]["activation_type"],
-                    "last_activation_type": params.affine_coupling_layers["t_net"]["last_activation_type"],
-                    "device":device}
-    
+            t_kwargs = {"activation_type": params.affine_coupling_layers["t_net"]["activation_type"],
+                        "last_activation_type": params.affine_coupling_layers["t_net"]["last_activation_type"],
+                        "device":device}
+           
     # get physics
     if (params.physics["type"] == "none") | (params.physics["hypers"]["alpha"] == 1):
         physics = None
@@ -366,7 +379,19 @@ if __name__ == "__main__":
             z_sigma_kwargs = {"activation_type": params.affine_coupling_layers["z_sigma_net"]["activation_type"],
                               "last_activation_type": params.affine_coupling_layers["z_sigma_net"]["last_activation_type"],
                               "device": device}
-            model = RealNVP_lz(params.affine_coupling_layers["z_dim"],
+            if args.MO:
+                model = MO_RealNVP_lz(params.affine_coupling_layers["z_dim"],
+                               params.affine_coupling_layers["n_transformation"],
+                               params.affine_coupling_layers["train"], mean,std,
+                               device,
+                               s_args,
+                               t_args,
+                               s_kwargs,
+                               t_kwargs,
+                               z_miu_args, z_sigma_args,
+                               z_miu_kwargs, z_sigma_kwargs)
+            else:
+                model = RealNVP_lz(params.affine_coupling_layers["z_dim"],
                                params.affine_coupling_layers["n_transformation"],
                                params.affine_coupling_layers["train"], mean,std,
                                device,

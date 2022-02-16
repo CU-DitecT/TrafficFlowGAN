@@ -39,6 +39,7 @@ def instantiate_activation_function(function_name):
         "leaky_relu": nn.LeakyReLU(),
         "tanh": nn.Tanh(),
         "sigmoid": nn.Sigmoid(),
+        "relu": nn.ReLU(),
         "none": None
     }
     return function_dict[function_name]
@@ -48,6 +49,7 @@ def get_fully_connected_layer(input_dim, output_dim, n_hidden, hidden_dim,
                               activation_type="leaky_relu",
                               last_activation_type="tanh",
                               device=None,
+                              BN=False,
                               mean = 0,
                               std = 1,
                               NNz= False):
@@ -62,8 +64,11 @@ def get_fully_connected_layer(input_dim, output_dim, n_hidden, hidden_dim,
         for l in range(n_hidden-1):
             modules.append(nn.Linear(hidden_dim, hidden_dim, device=device))
             activation = instantiate_activation_function(activation_type)
+            if BN:
+                modules.append(nn.BatchNorm1d(hidden_dim))
             if activation is not None:
                 modules.append(activation)
+
 
     # add the last layer
 
@@ -82,3 +87,12 @@ def get_fully_connected_layer(input_dim, output_dim, n_hidden, hidden_dim,
 
 
     return nn.Sequential(*modules)
+
+
+
+
+
+
+
+
+
