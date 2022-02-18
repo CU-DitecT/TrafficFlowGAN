@@ -185,7 +185,8 @@ class MO_RealNVP_lz(nn.Module):
                 torch.cat((x_, c), 1))
             t = self.t[i](
                 torch.cat((x_, c), 1))
-            x = x_ + (1 - self.mask[i]) * (x * torch.sigmoid(s) + t)
+            #x = x_ + (1 - self.mask[i]) * (x * torch.sigmoid(s) + t)
+            x = x_ + (1 - self.mask[i]) * (x  + t) * torch.sigmoid(s)
         return x
     
     def f(self, x, c):
@@ -221,7 +222,8 @@ class MO_RealNVP_lz(nn.Module):
             t = (1 - self.mask[i]) * self.t[i](
                 torch.cat((z_, c_), 1))
             t = torch.clamp(t, min=-5, max=5)
-            z = (1 - self.mask[i]) * (z - t) / torch.sigmoid(s) + z_
+            #z = (1 - self.mask[i]) * (z - t) / torch.sigmoid(s) + z_
+            z = (1 - self.mask[i]) * (z / torch.sigmoid(s) -  t) + z_
             log_det_J -= torch.log(torch.abs(torch.sigmoid(s))).sum(dim=1)
             #log_det_J -= s.sum(dim=1)
 
@@ -291,111 +293,4 @@ class MO_RealNVP_lz(nn.Module):
         ## hard code for Ngsim normalization
         #x = x*torch.from_numpy(self.std[:2]).to(self.device)+torch.from_numpy(self.mean[:2]).to(self.device)
         return x[:, 0:1], x[:, 1:2]
-
-### edited graph conditional flow for atoms in MoFlow:
-class MOAffineCoupling(nn.Module):
-    def __init__(self, n_node, in_dim, hidden_dim_dict, masked_row, affine=True):
-        super(MOAffineCoupling, self).__init__()
-        self.n_node = n_node
-        self.in_dim = in_dim
-        #self.hidden_dim_dict = hidden_dim_dict
-        self.masked_row = masked_row
-        self.affine = affine #True
-
-        #self.hidden_dim_gnn = hidden_dim_dict['gnn']
-        self.hidden_dim_linear = hidden_dim_dict['linear'] #number of hidden layer in each s or t
-
-        """ ignore graph neural network
-        self.net = nn.ModuleList()
-        self.norm = nn.ModuleList()
-        last_dim = in_dim
-        for out_dim in self.hidden_dim_gnn:  # What if use only one gnn???
-            #self.net.append(GraphConv(last_dim, out_dim))
-            self.norm.append(nn.BatchNorm1d(n_node))  # , momentum=0.9 Change norm!!!
-            # self.norm.append(ActNorm2D(in_dim=n_node, logdet=False))
-            last_dim = out_dim
-        """
-
-        self.net_lin = nn.ModuleList()
-        self.norm_lin = nn.ModuleList()
-        for out_dim in self.hidden_dim_linear:  # What if use only one gnn???
-            self.net_lin.append(nn.linear(last_dim, in_dim*2))#self.net_lin.append(GraphLinear(last_dim, in_dim*2))
-            self.norm_lin.append(nn.BatchNorm1d(n_node))  # , momentum=0.9 Change norm!!!
-            # self.norm_lin.append(ActNorm2D(in_dim=n_node, logdet=False))
-            last_dim = out_dim
-
-        if affine:
-            self.net_lin.append(nn.linear(last_dim, in_dim*2))#self.net_lin.append(GraphLinear(last_dim, in_dim*2))
-        else:
-            self.net_lin.append(nn.linear(last_dim, in_dim))#self.net_lin.append(GraphLinear(last_dim, in_dim))
-
-        self.scale = nn.Parameter(torch.zeros(1))  # nn.Parameter(torch.ones(1)) #
-        mask = torch.ones(n_node, in_dim)
-        mask[masked_row, :] = 0  # masked_row are kept same, and used for _s_t for updating the left rows
-        self.register_buffer('mask', mask)
-
-    def forward(self, adj, input): #from x to z
-        masked_x = self.mask * input
-        s, t = self._s_t_function(adj, masked_x)  # s must not equal to 0!!!
-        if self.affine:
-            out = masked_x + (1-self.mask) * (input + t) * s
-            # out = masked_x + (1-self.mask) * (input * s + t)
-            logdet = torch.sum(torch.log(torch.abs(s)).view(input.shape[0], -1), 1)  # possibly wrong answer
-        else:  # add coupling
-            out = masked_x + t*(1-self.mask)
-            logdet = None
-        return out, logdet
-
-    def reverse(self, adj, output):
-        masked_y = self.mask * output
-        s, t = self._s_t_function(adj, masked_y)
-        if self.affine:
-            input = masked_y + (1 - self.mask) * (output / s - t)
-            # input = masked_x + (1 - self.mask) * ((output-t) / s)
-        else:
-            input = masked_y + (1 - self.mask) * (output - t)
-        return input
-
-    def _s_t_function(self, adj, x):
-        # adj: (2,4,9,9)  x: # (2,9,5)
-        s = None
-        h = x
-        """ignore Graph neural network
-        for i in range(len(self.net)):
-            h = self.net[i](adj, h)  # (2,1,9,hidden_dim)
-            h = self.norm[i](h)
-            # h = torch.tanh(h)  # tanh may be more stable
-            h = torch.relu(h)  # use relu!!!
-        """
-
-        for i in range(len(self.net_lin)-1):
-            h = self.net_lin[i](h)  # (2,1,9,hidden_dim)
-            h = self.norm_lin[i](h)
-            # h = torch.tanh(h)
-            h = torch.relu(h)
-
-        h = self.net_lin[-1](h)
-        # h =h * torch.exp(self.scale*2)
-
-        if self.affine:
-            log_s, t = h.chunk(2, dim=-1)
-            #  x = sigmoid(log_x+bias): glow code Top 1 choice, keep s away from 0, s!!!!= 0  always safe!!!
-            # And get the signal from added noise in the  input
-            # s = torch.sigmoid(log_s + 2)
-            s = torch.sigmoid(log_s)  # better validity + actnorm
-
-            # s = torch.tanh(log_s)  # Not stable when s =0 for synthesis data, but works well for real data in best case....
-            # s = torch.sign(s)
-
-            # s = torch.sign(log_s)
-
-            # s = F.softplus(log_s) # negative nll
-            # s = torch.sigmoid(log_s)  # little worse than +2, # *self.scale #!!! # scale leads to nan results
-            # s = torch.tanh(log_s+2) # not that good
-            # s = torch.relu(log_s) # nan results
-            # s = log_s  # nan results
-            # s = torch.exp(log_s)  # nan results
-        else:
-            t = h
-        return s, t
 
