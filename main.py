@@ -41,7 +41,7 @@ else:
 parser = argparse.ArgumentParser()
 parser.add_argument('--experiment_dir', default='experiments/ngsim_learning_z_phy_FD_fix', #lwr_with_u_learning_z
                     help="Directory containing experiment_setting.json")
-parser.add_argument('--restore_from', default= "experiments/ngsim_learning_z_phy_FD_fix/weights/last.path.tar", #"experiments/lwr_learning_z/weights/last.path.tar",
+parser.add_argument('--restore_from', default= None, #"experiments/lwr_learning_z/weights/last.path.tar",
                     help="Optional, file location containing weights to reload")
 parser.add_argument('--mode', default='train',
                     help="train, test, or train_and_test")
