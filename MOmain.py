@@ -39,12 +39,10 @@ else:
     logging.info("cuda is not available")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--experiment_dir', default='experiments/ngsim_learning_z_MO', #lwr_with_u_learning_z
+parser.add_argument('--experiment_dir', default='experiments/ngsim_learning_z_MO_2', #lwr_with_u_learning_z
                     help="Directory containing experiment_setting.json")
-
 parser.add_argument('--MO', default=True,
                     help="Use RealNVP or MORealNVP")  # 100
-
 
 parser.add_argument('--restore_from', default= None, #"experiments/lwr_learning_z/weights/last.path.tar",
                     help="Optional, file location containing weights to reload")
