@@ -36,7 +36,7 @@
         }
     },
     "physics": {
-        "type": "arz",
+        "type": "none",
         "train": "False",
         "loss_fn": "raissi",
         "hypers": {
@@ -91,13 +91,13 @@
     "verbose_computation_time": 0,
     "data": {
         "type": "ngsim",
-        "loop_number": 18,
-        "noise_scale": 0.02,
+        "loop_number": 16,
+        "noise_scale": 0.2,
         "noise_number": 20
     },
     "metrics": [
         "rmse",
-        "nll"
+        "fake_kl"
     ],
     "learning_z": "True"
 }

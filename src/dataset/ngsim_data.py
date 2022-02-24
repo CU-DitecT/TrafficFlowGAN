@@ -38,7 +38,7 @@ class ngsim_data_loader():
 
         xx = np.array(data_pickle['s']).flatten()[:, None]
         tt = np.array(data_pickle['t']).flatten()[:, None]
-        rhoMat = np.array([np.array(ele) for ele in data_pickle['rhoMat']])
+        rhoMat = np.array([np.array(ele) for ele in data_pickle['rhoMat']])*50
         uMat = np.array([np.array(ele) for ele in data_pickle['vMat']])
         # rhoMat_smooth = scipy.ndimage.uniform_filter(rhoMat, size=5, mode='nearest')
         # uMat_smooth = scipy.ndimage.uniform_filter(uMat, size=5, mode='nearest')

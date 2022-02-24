@@ -11,6 +11,7 @@ from src.utils import Params, save_checkpoint, load_checkpoint
 # from src.models.nn import RealNVP_lz
 # from src.models.flow_learning_z_cnn import RealNVP_lz
 from src.models.flow_learning_z import RealNVP_lz
+
 from src.metrics import instantiate_losses, instantiate_metrics, functionalize_metrics
 from src.utils import set_logger, delete_file_or_folder
 from src.training import training, test, test_multiple_rounds
@@ -351,8 +352,8 @@ if __name__ == "__main__":
         model_alias = args.experiment_dir.split('/')[-1]
         test_multiple_rounds(model, test_feature, test_label, test_rounds=args.test_rounds, save_dir=save_dir,
                              model_alias=model_alias,
-                             restore_from=restore_from, metric_functions=metric_fns, n_samples=args.test_sample,
-                             noise=args.noise, args=args)
+                             restore_from=restore_from, metric_functions=metric_fns, n_samples=int(args.test_sample),
+                             noise=params.data['noise_scale'], args=args)
         save_path_x = os.path.join(save_dir, model_alias,
                                         f"x.csv")
         save_path_t = os.path.join(save_dir, model_alias,
@@ -382,8 +383,8 @@ if __name__ == "__main__":
                              model_alias=model_alias,
                              restore_from=restore_from,
                              metric_functions=metric_fns,
-                             n_samples=args.test_sample,
-                             noise=args.noise,
+                             n_samples=int(args.test_sample),
+                             noise=params.data['noise_scale'],
                              args=args)
         
         save_path_x = os.path.join(save_dir, model_alias,

@@ -9,7 +9,8 @@ import logging
 import os
 from src.utils import save_dict_to_json, check_exist_and_create, check_and_make_dir
 from torch.utils.tensorboard import SummaryWriter
-from src.dataset.gan_helper import  gan_helper
+# from src.dataset.gan_helper import gan_helper
+from src.dataset.gan_helper_ngsim import gan_helper
 
 import time
 
@@ -162,8 +163,8 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
                     T_fake = discriminator.forward(generator_figure)
                     T_real = discriminator.forward(torch.from_numpy(Ground_truth_figure).to(device))
                     loss_g = T_fake
-                    loss_g_mse = torch.square(torch.from_numpy(Ground_truth_figure_origin[:,:,:,[0,8,12,24]]).to(device)-
-                                              generator_figure_origin[:,:,:,[0,8,12,24]]).mean()
+                    loss_g_mse = torch.square(torch.from_numpy(Ground_truth_figure_origin[:,:,:,[0,8,12,20]]).to(device)-
+                                              generator_figure_origin[:,:,:,[0,8,12,20]]).mean()
                     loss_g_mse_viz = torch.square(torch.from_numpy(Ground_truth_figure_origin).to(device)-
                                               generator_figure_origin).mean() # for visualization
                     T_real_np = T_real.cpu().detach().numpy()
@@ -369,13 +370,15 @@ def test(model, test_feature, test_target,
 
     metrics_dict = dict()
     kl = None
+    kl_u = None
+    kl_rho = None
     for k, func in metric_functions.items():
         if k == 'nlpd':
             use_mean = True if args.nlpd_use_mean == "True" else False
             metrics_dict[k] = [func(test_target, test_prediction,
                                    use_mean = use_mean,
                                    n_bands = args.nlpd_n_bands)]            
-        elif k == "kl":
+        elif (k == "kl") or (k == "fake_kl"):
             
             ###BCE with logit:
             #kl = func(torch.from_numpy(test_target), torch.from_numpy(test_prediction)).item()
@@ -398,7 +401,7 @@ def test(model, test_feature, test_target,
            metrics_dict[k] = [func(torch.from_numpy(test_target), torch.from_numpy(test_prediction)).item()]
         print('{}: done'.format(k))
 
-    return metrics_dict, test_prediction, exact_sample_u,exact_sample_rho, samples_mean_u,samples_mean_rho
+    return metrics_dict, test_prediction, exact_sample_u,exact_sample_rho, samples_mean_u,samples_mean_rho,kl_u,kl_rho
     
 
 
@@ -409,7 +412,7 @@ def test_multiple_rounds(model, test_feature,test_label, test_rounds=1,
                          save_dir = None,
                          model_alias = None,                        
                 **kwargs):
-    metrics_dict, test_prediction, exact_sample_u,exact_sample_rho, samples_mean_u,samples_mean_rho = test(model, test_feature,test_label,
+    metrics_dict, test_prediction, exact_sample_u,exact_sample_rho, samples_mean_u,samples_mean_rho, kl_u,kl_rho = test(model, test_feature,test_label,
                                          **kwargs)
     logging.info("Restoring parameters from {}".format(kwargs["restore_from"]))
     if test_rounds > 1:
@@ -437,8 +440,8 @@ def test_multiple_rounds(model, test_feature,test_label, test_rounds=1,
                                         f"targets_test_rho.csv")
     save_path_target_u = os.path.join(save_dir, model_alias,
                                         f"targets_test_u.csv")
-    # save_path_kl_rho = os.path.join(save_dir, model_alias,f"kl_rho_test.csv")
-    # save_path_kl_u = os.path.join(save_dir, model_alias,f"kl_u_test.csv")
+    save_path_kl_rho = os.path.join(save_dir, model_alias,f"kl_rho_test.csv")
+    save_path_kl_u = os.path.join(save_dir, model_alias,f"kl_u_test.csv")
     
     save_dict_to_json(metrics_dict, save_path_metric)
     #np.savetxt(save_path_prediction, test_prediction, delimiter=",")
@@ -450,8 +453,8 @@ def test_multiple_rounds(model, test_feature,test_label, test_rounds=1,
     np.savetxt(save_path_feature, test_feature, delimiter=",")
     np.savetxt(save_path_target_rho, exact_sample_rho, delimiter=",")
     np.savetxt(save_path_target_u, exact_sample_u, delimiter=",")
-    # np.savetxt(save_path_kl_rho, kl_rho, delimiter=",")
-    # np.savetxt(save_path_kl_u, kl_u, delimiter=",")
+    np.savetxt(save_path_kl_rho, kl_rho, delimiter=",")
+    np.savetxt(save_path_kl_u, kl_u, delimiter=",")
 
 
 

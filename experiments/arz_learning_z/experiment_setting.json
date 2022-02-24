@@ -97,7 +97,7 @@
     },
     "metrics": [
         "rmse",
-        "kl"
+        "fake_kl"
     ],
     "learning_z": "True"
 }

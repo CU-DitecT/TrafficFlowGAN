@@ -235,10 +235,10 @@ def main(experiment_dir, result_dir, mode="debug", sudoku=True, interval="predic
 
     y_true_rho = np.loadtxt(os.path.join(result_dir, "targets_test_rho.csv"), delimiter=",", dtype=np.float32)
     y_pred_rho = np.loadtxt(os.path.join(result_dir, "predictions_test_rho.csv"), delimiter=",", dtype=np.float32)
-    # kl_rho = np.loadtxt(os.path.join(result_dir, "kl_rho_test.csv"), delimiter=",", dtype=np.float32)
     y_true_u = np.loadtxt(os.path.join(result_dir, "targets_test_u.csv"), delimiter=",", dtype=np.float32)
     y_pred_u = np.loadtxt(os.path.join(result_dir, "predictions_test_u.csv"), delimiter=",", dtype=np.float32)
-    # kl_u = np.loadtxt(os.path.join(result_dir, "kl_u_test.csv"), delimiter=",", dtype=np.float32)
+    kl_rho = np.loadtxt(os.path.join(result_dir, "kl_rho_test.csv"), delimiter=",", dtype=np.float32)
+    kl_u = np.loadtxt(os.path.join(result_dir, "kl_u_test.csv"), delimiter=",", dtype=np.float32)
 
     alias = os.path.basename(result_dir)
     viz_dir = os.path.join(experiment_dir, "viz", alias)
@@ -250,31 +250,31 @@ def main(experiment_dir, result_dir, mode="debug", sudoku=True, interval="predic
 
 
 
-    # # sudoku
-    # if sudoku is True:
-    #     for choose_lowest_kl in COMPARE_HIST_SUDOKU["choose_lowest_kl"]:
-    #         level = COMPARE_HIST_SUDOKU["level"]
-    #         width = COMPARE_HIST_SUDOKU["width"]
-    #         height = COMPARE_HIST_SUDOKU["height"]
-    #         save_at_rho = os.path.join(viz_dir,
-    #                                f"(rho)-mode={mode}-sudoku-level={level:d}-lowest_kl={choose_lowest_kl:d}.png")
-    #         save_at_u = os.path.join(viz_dir,
-    #                                f"(u)-mode={mode}-sudoku-level={level:d}-lowest_kl={choose_lowest_kl:d}.png")
-    #         #save_at = os.path.join(viz_dir,
-    #         #                       f"-mode={mode}-sudoku-level={level:d}-lowest_kl={choose_lowest_kl:d}.png")
-    #         if os.path.exists(save_at_rho) & (force_overwrite is False):
-    #         #if os.path.exists(save_at) & (force_overwrite is False):
-    #             print('PASS')
-    #             pass
-    #         else:
-    #             compare_hist_sudoku('rho',y_true_rho, y_pred_rho, kl_rho, level=level,
-    #                                 width=width, height=height, mode=mode,
-    #                                 choose_lowest_kl=choose_lowest_kl,
-    #                                 save_at=save_at_rho)
-    #             compare_hist_sudoku('u',y_true_u, y_pred_u, kl_u, level=level,
-    #                                 width=width, height=height, mode=mode,
-    #                                 choose_lowest_kl=choose_lowest_kl,
-    #                                 save_at=save_at_u)
+    # sudoku
+    if sudoku is True:
+        for choose_lowest_kl in COMPARE_HIST_SUDOKU["choose_lowest_kl"]:
+            level = COMPARE_HIST_SUDOKU["level"]
+            width = COMPARE_HIST_SUDOKU["width"]
+            height = COMPARE_HIST_SUDOKU["height"]
+            save_at_rho = os.path.join(viz_dir,
+                                   f"(rho)-mode={mode}-sudoku-level={level:d}-lowest_kl={choose_lowest_kl:d}.png")
+            save_at_u = os.path.join(viz_dir,
+                                   f"(u)-mode={mode}-sudoku-level={level:d}-lowest_kl={choose_lowest_kl:d}.png")
+            #save_at = os.path.join(viz_dir,
+            #                       f"-mode={mode}-sudoku-level={level:d}-lowest_kl={choose_lowest_kl:d}.png")
+            if os.path.exists(save_at_rho) & (force_overwrite is False):
+            #if os.path.exists(save_at) & (force_overwrite is False):
+                print('PASS')
+                pass
+            else:
+                compare_hist_sudoku('rho',y_true_rho, y_pred_rho, kl_rho, level=level,
+                                    width=width, height=height, mode=mode,
+                                    choose_lowest_kl=choose_lowest_kl,
+                                    save_at=save_at_rho)
+                compare_hist_sudoku('u',y_true_u, y_pred_u, kl_u, level=level,
+                                    width=width, height=height, mode=mode,
+                                    choose_lowest_kl=choose_lowest_kl,
+                                    save_at=save_at_u)
 
 
 if __name__ == "__main__":
