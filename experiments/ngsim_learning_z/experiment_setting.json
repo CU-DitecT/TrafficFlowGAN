@@ -1,6 +1,6 @@
 {
     "affine_coupling_layers": {
-        "train": "True",
+        "train": "False",
         "z_dim": 2,
         "c_dim": 2,
         "n_transformation": 6,

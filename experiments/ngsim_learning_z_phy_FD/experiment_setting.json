@@ -1,6 +1,6 @@
 {
     "affine_coupling_layers": {
-        "train": "True",
+        "train": "False",
         "z_dim": 2,
         "c_dim": 2,
         "n_transformation": 6,
@@ -31,7 +31,7 @@
         "optimizer": {
             "type": "Adam",
             "kwargs": {
-                "lr": 0.000001
+                "lr": 0.1
             }
         }
     },
@@ -47,7 +47,7 @@
         "optimizer": {
             "type": "Adam",
             "kwargs": {
-                "lr": 0.000001
+                "lr": 0.1
             }
         },
        "FD_n_layer":2,

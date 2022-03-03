@@ -7,7 +7,7 @@ import numpy as np
 import torch
 
 from src.utils import Params, save_checkpoint, load_checkpoint
-from src.models.flow import RealNVP
+from src.models.flow import RealNVP, MO_RealNVP
 from src.models.flow_learning_z import RealNVP_lz,MO_RealNVP_lz
 # from src.metrics import instantiate_losses, instantiate_metrics, functionalize_metrics
 from src.utils import set_logger, delete_file_or_folder
@@ -22,7 +22,7 @@ from src.dataset.burgers_data import burgers_data_loader
 from src.dataset.ngsim_data import ngsim_data_loader
 from src.layers.discriminator import Discriminator
 
-from src.layers.physics import GaussianLWR
+from src.layers.physics import GaussianLWR, GaussianLWR_soft
 from src.layers.physics import GaussianARZ, GaussianARZ_FD
 from src.layers.physics import GaussianBurgers
 from src.metrics import instantiate_losses, instantiate_metrics, functionalize_metrics
@@ -246,6 +246,15 @@ if __name__ == "__main__":
                               params.physics["hypers"],
                               train=(params.physics["train"] == "True"))
         physics.to(device)
+    elif params.physics["type"] == "lwr_soft":
+        physics = GaussianLWR_soft(params.physics["meta_params_value"],
+                              params.physics["meta_params_trainable"],
+                              params.physics["lower_bounds"],
+                              params.physics["upper_bounds"],
+                              params.physics["hypers"],
+                              train=(params.physics["train"] == "True"),
+                              device=device)
+        physics.to(device)
     elif params.physics["type"] == "arz":
         physics = GaussianARZ(params.physics["meta_params_value"],
                               params.physics["meta_params_trainable"],
@@ -353,16 +362,26 @@ if __name__ == "__main__":
             model_2.to(device)
     else:
         if params.learning_z == "False":
-            model = RealNVP(params.affine_coupling_layers["z_dim"],
-                            params.affine_coupling_layers["n_transformation"],
-                            params.affine_coupling_layers["train"],
-                            mean,
-                            std,
-                            device,
-                            s_args,
-                            t_args,
-                            s_kwargs,
-                            t_kwargs)
+            if args.MO:
+                model = MO_RealNVP(params.affine_coupling_layers["z_dim"],
+                                      params.affine_coupling_layers["n_transformation"],
+                                      params.affine_coupling_layers["train"], mean, std,
+                                      device,
+                                      s_args,
+                                      t_args,
+                                      s_kwargs,
+                                      t_kwargs)
+            else:
+                model = RealNVP(params.affine_coupling_layers["z_dim"],
+                                params.affine_coupling_layers["n_transformation"],
+                                params.affine_coupling_layers["train"],
+                                mean,
+                                std,
+                                device,
+                                s_args,
+                                t_args,
+                                s_kwargs,
+                                t_kwargs)
             model.to(device)
         if params.learning_z == "True":
             input_dim_z = params.affine_coupling_layers["c_dim"]
