@@ -65,7 +65,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
         assert os.path.isfile(restore_from), "restore_from is not a file"
         # restore model
         begin_at_epoch = utils.load_checkpoint(restore_from, model, optimizer, begin_at_epoch) #torch.device('cpu')
-        if physics is not None:
+        if physics is not None :
             str_idx = restore_from.index('.tar')
             restore_from_physics=restore_from[:str_idx] + '.physics' + restore_from[str_idx:]  
             #assert os.path.isfile(restore_from_physics), "restore_from_physics is not a file"
@@ -97,6 +97,12 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
 
         #### hard code
         # y_train[:,0] = y_train[:,1]
+        model_params_print = [p for p in model.parameters()]
+        # physics_params_print = [p for p in physics.FD_learner.parameters()]
+        # print("\n")
+        # print("one flow parameter:    ", model_params_print[2].detach().cpu().numpy()[-1])
+        # print("one physics parameter:    ", physics_params_print[2].detach().cpu().numpy()[-1])
+
         ####
 
         # train step
@@ -123,11 +129,11 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
             loss_data_time = time.time()-start_time
 
 
-            if physics is not None:
+            if (physics is not None) & (epoch//100%3 == 0):
                 physics_optimizer.zero_grad()
 
             # get physics_loss
-            if physics is not None:
+            if (physics is not None) & (epoch//100%3 == 0):
                 start_time = time.time()
                 phy_loss, physics_params, grad_hist = physics.get_residuals(model, x_batch_phy)
                 phy_loss = phy_loss.mean()
@@ -187,12 +193,13 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
             start_time = time.time()
             if model.train is True:
                 optimizer.step()
+                optimizer.zero_grad()
                 pass
 
             step_data_time = time.time() - start_time
 
             start_time = time.time()
-            if physics is not None:
+            if (physics is not None) & (epoch//100%3 == 0):
                 if physics.train is True:
                     physics_optimizer.step()
                     #pass
@@ -213,7 +220,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
 
             # delete the output tensor
             del([data_loss, loss])
-            if physics is not None:
+            if (physics is not None) & (epoch//100%3 == 0):
                 del(phy_loss)
             if training_gan is True:
                 del(loss_g)
@@ -242,7 +249,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
                                   is_best=is_best,
                                   checkpoint=weights_path,
                                   save_each_epoch=save_each_epoch)
-            if physics is not None:                
+            if (physics is not None) & (epoch//100%3 == 0):
                 utils.save_checkpoint_physics({'epoch': epoch + 1,
                                    'state_dict': physics.state_dict(),
                                    'optim_dict': physics_optimizer.state_dict()},
@@ -266,7 +273,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
             # save loss to tensorboard
             writer.add_scalar("loss/train", Data_loss[-1], epoch+1)
             writer.add_scalar("loss/train_data_loss", data_loss_np, epoch+1)
-            if physics is not None:
+            if (physics is not None) & (epoch//100%3 == 0):
                 writer.add_scalar("loss/train_phy_loss", phy_loss_np, epoch+1)
             if training_gan is True:
                 writer.add_scalar("loss/generator_loss", loss_g_np, epoch + 1)
@@ -277,7 +284,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
                 writer.add_histogram(f"activation_train/{k:s}", v, epoch+1)
             for k, v in activation_eval.items():
                 writer.add_histogram(f"activation_eval/{k:s}", v, epoch+1)
-            if physics is not None:
+            if (physics is not None) & (epoch//100%3 == 0):
                 # write the physics_params
                 for k, v in physics_params.items():
                     if k=='tau':

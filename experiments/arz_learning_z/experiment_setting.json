@@ -37,7 +37,7 @@
         }
     },
     "physics": {
-        "type": "none",
+        "type": "arz_FD",
         "train": "False",
         "loss_fn": "raissi",
         "hypers": {

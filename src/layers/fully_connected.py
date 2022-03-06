@@ -73,12 +73,13 @@ def get_fully_connected_layer(input_dim, output_dim, n_hidden, hidden_dim,
     # add the last layer
 
     modules.append(nn.Linear(hidden_dim, output_dim, device=device))
-    last_activation = instantiate_activation_function(last_activation_type)
+
 
     # modules.append(Multiply(0.5))
     if last_activation_type == "none":
         pass
     else:
+        last_activation = instantiate_activation_function(last_activation_type)
         modules.append(last_activation)
     # modules.append(Multiply(2))
     # the "mulltiply 2" is to stretch the range of the activation funtion (e.g. sigmoid) for 2 times long

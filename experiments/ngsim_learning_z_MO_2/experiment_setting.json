@@ -98,7 +98,7 @@
         "noise_number": 20
     },
     "metrics": [
-        "kl",
+        "fake_kl",
         "rmse",
         "nll",
         "nlpd"

@@ -8,21 +8,22 @@
             "n_hidden": 5,
             "hidden_dim": 128,
             "activation_type": "relu",
-            "last_activation_type": "tanh",
-	  "BN": "True"
+            "last_activation_type": "none",
+            "BN": "True"
         },
         "t_net": {
             "n_hidden": 5,
             "hidden_dim": 128,
             "activation_type": "relu",
-            "last_activation_type": "tanh",
-	  "BN":"True"
+            "last_activation_type": "none",
+            "BN": "True"
         },
         "z_miu_net": {
             "n_hidden": 2,
             "hidden_dim": 64,
             "activation_type": "leaky_relu",
-            "last_activation_type": "none"        },
+            "last_activation_type": "none"
+        },
         "z_sigma_net": {
             "n_hidden": 2,
             "hidden_dim": 64,
@@ -52,7 +53,7 @@
             }
         },
         "meta_params_value": {
-            "mu_rhomax": 33.35,
+             "mu_rhomax": 33.35,
             "mu_umax": 13.511,
             "mu_tau": 27.5,
             "sigma_rhomax": 0,
@@ -84,9 +85,9 @@
             "sigma_tau": 1
         }
     },
-    "batch_size": 500,
-    "epochs": 20000,
-    "save_frequency": 1,
+    "batch_size": 1000,
+    "epochs": 100000,
+    "save_frequency": 50,
     "verbose_frequency": 1,
     "save_each_epoch": "False",
     "verbose_computation_time": 0,
@@ -97,8 +98,11 @@
         "noise_number": 20
     },
     "metrics": [
+        "fake_kl",
         "rmse",
-        "fake_kl"
+        "nll",
+        "nlpd"
+
     ],
     "learning_z": "True"
 }

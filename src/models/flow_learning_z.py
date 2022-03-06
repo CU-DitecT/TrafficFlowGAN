@@ -218,10 +218,10 @@ class MO_RealNVP_lz(nn.Module):
             z_ = self.mask[i]* z  # z_ = (self.mask[i] * z)            
             s = (1 - self.mask[i]) * self.s[i](
                 torch.cat((z_, c_), 1))
-            s = torch.clamp(s, min=-5, max=5)
+            # s = torch.clamp(s, min=-5, max=5)
             t = (1 - self.mask[i]) * self.t[i](
                 torch.cat((z_, c_), 1))
-            t = torch.clamp(t, min=-5, max=5)
+            # t = torch.clamp(t, min=-5, max=5)
             #z = (1 - self.mask[i]) * (z - t) / torch.sigmoid(s) + z_
             z = (1 - self.mask[i]) * (z / torch.sigmoid(s) -  t) + z_
             log_det_J -= torch.log(torch.abs(torch.sigmoid(s))).sum(dim=1)
@@ -251,8 +251,8 @@ class MO_RealNVP_lz(nn.Module):
             miu, sigma = self.NN_z(torch.from_numpy(c).to(self.device))
 
         # hard code here
-        sigma = torch.sigmoid(sigma) + 0.5
-
+        # sigma = torch.sigmoid(sigma) + 0.5
+        sigma = torch.sigmoid(sigma*0.5) * 2 + 0.05
 
         L = 0.5*torch.log(torch.tensor([2*math.pi], device=self.device))+torch.log(sigma)+torch.div(torch.mul((z-miu),(z-miu)),2*torch.mul(sigma,sigma))
         L = L[:,0:1]+L[:,1:2]
@@ -265,16 +265,23 @@ class MO_RealNVP_lz(nn.Module):
         return -L.squeeze() + log_p , activation
 
     def eval(self, c):
-        torch.manual_seed(1)
+        # torch.manual_seed(1)
+        if torch.is_tensor(c):
+            miu, sigma = self.NN_z(c.to(self.device))
+        else:
+            miu, sigma = self.NN_z(torch.from_numpy(c).to(self.device))
+        # sigma = torch.sigmoid(sigma) + 0.5
+        sigma = torch.sigmoid(sigma) * 0.5 + 0.05
         z = self.prior.sample((c.shape[0], 1)).to(self.device)
         z = torch.squeeze(z)
+        z = miu + sigma*z
         if torch.is_tensor(c):
             c_ = c.to(self.device)
         else:
             c_ = torch.from_numpy(c).to(self.device)
         # log_p = self.prior.log_prob(z, c)
         x = self.g(z, c_)
-        x = x * torch.from_numpy(self.std[:2]).to(self.device) + torch.from_numpy(self.mean[:2]).to(self.device)
+        # x = x * torch.from_numpy(self.std[:2]).to(self.device) + torch.from_numpy(self.mean[:2]).to(self.device)
         activation = {"x1_eval": x[:, 0].cpu().detach().numpy(),
                       "x2_eval": x[:, 1].cpu().detach().numpy()}
         return activation
@@ -286,8 +293,9 @@ class MO_RealNVP_lz(nn.Module):
         miu,sigma = self.NN_z(c)
         #miu,_ = self.NN_z(c)
         #sigma=0.0
+        sigma = torch.sigmoid(sigma)*0.5 + 0.05
 
-        z_cali = z*sigma + miu
+        z_cali = z*sigma+ miu
         # log_p = self.prior.log_prob(z, c)
         x = self.g(z_cali, c)
         ## hard code for Ngsim normalization

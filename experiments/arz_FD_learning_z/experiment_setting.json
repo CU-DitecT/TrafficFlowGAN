@@ -51,10 +51,10 @@
             }
         },
        "FD_n_layer":2,
-       "FD_n_hidden":50,
+       "FD_n_hidden":20,
         "meta_params_value": {
-            "mu_rhomax": 1.13,
-            "mu_umax": 1.02,
+            "mu_rhomax": 1.5,
+            "mu_umax": 0.1969,
             "mu_tau": 0.02,
             "sigma_rhomax": 0,
             "sigma_umax": 0,
@@ -71,7 +71,7 @@
         "lower_bounds": {
             "mu_rhomax": 0.1,
             "mu_umax": 0.1,
-            "mu_tau": 0.1,
+            "mu_tau": 0.01,
             "sigma_rhomax": 0,
             "sigma_umax": 0,
             "sigma_tau": 0
