@@ -3,28 +3,59 @@ import pandas as pd
 import os
 import numpy as np
 import seaborn as sns
+import scipy.io
 import sys
 sns.set(style = 'white', font_scale = 1.5)
 
 import matplotlib.pyplot as plt
-path = "."
-with open(os.path.join(path, "US101_Lane1to5_t1.5s30.pickle"), "rb") as f:
-    data = pickle.load(f)
+path = os.path.join("..", "data", "arz")
+data = scipy.io.loadmat(os.path.join(path, "ARZ_greenshieldSim_epsbell_infer_ring_May14_0.02tau.mat"))
 
 
 # data
-rho = data['rhoMat']
-q = data['qMat']
-u = data['vMat']
-dx = data['s'][1] - data['s'][0]
-dt = data['t'][1] - data['t'][0]
+u = data['u'][:-1,:]
+rho = data['rho'][:-1,:]
+
+# normalize the data
+rhoM = rho.max()
+uM = u.max()
+#rho = rho / rhoM
+#u = u /uM
+#q = rho*u
+
+
+t = data['t']
+s = data['x']
+dt = data['t'][0][1] - data['t'][0][0]
+dx = data['x'][0][1] - data['x'][0][0]
+
+
+# LF solver
+
+PARA = {
+    "rho_jam": 1.13,  # whatever, just a default value
+    "u_free": 1.02,
+    "tau": 0.02,
+    "is_h_original_with_beta": 0,
+    "is_h_only_with_Ueq": 1,
+
+    # grid
+    'dt': dt,
+    'dx': dx,
+}
+
+sum_h_swithces = PARA["is_h_original_with_beta"] + \
+                 PARA["is_h_only_with_Ueq"]
+
+# if sum_h_switthes == 0, by default use the h_only_with_Ueq
+assert sum_h_swithces <= 1
 
 
 
 # AS parameters
 # reviewer suggested to use parameters in paper "Low-Rank Hankel Tensor Completion for Traffic
 # Speed Estimation"
-Use_Reviewer_Suggested_Para = True
+Use_Reviewer_Suggested_Para = False
 
 if Use_Reviewer_Suggested_Para is True:
     param = {"sigma": 200 * 0.3048,  # ft to m
@@ -39,37 +70,39 @@ if Use_Reviewer_Suggested_Para is True:
 else:
     param = {"sigma": dx/2,
     "tau": dt/2,
-    "c_free": 0.277778*70, # km/h to m/s
-    "c_cong": 0.277778*(-15),
-    "V_thr": 0.277778*60,
-    "DV": 0.277778*20,
+    "c_free": 1, # km/h to m/s
+    "c_cong": -1,
+    "V_thr": 1,
+    "DV": 0.2,
      "dx":dx,
      "dt":dt
     }
     
-    
+
+N = rho.shape[0]
+T = rho.shape[1]
+print('dt=', dt)
+print('dx=', dx)
+print('N=', N)
+print('T=', T)
+print('dx/dt', dx/dt)
+
+# AS parameters
+# reviewer suggested to use parameters in paper "Low-Rank Hankel Tensor Completion for Traffic
+# Speed Estimation"
+
+
 # window in the t direction: we don't need use all 1770 t.
-half_window = 50
-twice_window = 101
+half_window = 20
+twice_window = 41
 
-
-LOOPS = {2: [0,20],\
-                #3: [0,7,20],\
-    4: [0,5,11,20],\
-                #5: [0,4,8,13,20],\
-    6: [0,3,7,11,14,20],\
-                #7: [0,3,6,9,12,15,20],\
-    8: [0,2,5,8,11,13,16,20],\
-                #9: [0,2,4,7,9,12,14,17,20],\
-    10: [0,2,4,6,8,11,13,15,17,20],\
-                #11: [0,2,4,6,8,10,12,14,16,18,20],\
-    12: [0,1,3,5,7,9,11,12,14,16,18,20],\
-                #13: [0,1,3,5,6,8,10,11,13,15,16,18,20],\
-    14: [0,1,3,4,6,7,9,11,12,14,15,17,18,20],\
-                #15: [0,1,2,4,5,7,8,10,11,13,14,16,17,19,20],\
-                #16: [0,1,2,4,5,6,8,9,11,12,13,15,16,17,19,20],\
-                #18: [0,1,2,3,4,6,7,8,9,11,12,13,14,15,17,18,19,20]
-        }
+LOOPS = {
+    2: [0, 239], \
+    4: [0, 80, 120, 239], \
+    6: [0, 48, 96, 144, 192, 239], \
+    10: [0, 26, 52, 78, 104, 130, 156, 182, 208, 239], \
+    14: [0, 18, 36, 54, 72, 90, 108, 126, 144, 162, 180, 198, 216, 239]
+}
 
 # the time index of the observation, which is the whole index set
 T = np.array([i for i in range(rho.shape[1])])
@@ -96,7 +129,7 @@ class AdaSM():
         dist_T_first = dist_T[:,:half_window,:,:twice_window] # dim: 21*50*N_loop*101
         dist_T_mid = dist_T[:,half_window:-half_window,:,:]   # dim: 21*1670*N_loop*1770
         idx_mid = np.where(abs(dist_T_mid)<=half_window)      
-        dist_T_mid = dist_T_mid[idx_mid].reshape(21,1770-2*half_window,N_loop,-1) # dim: 21*1670*N_loop*101
+        dist_T_mid = dist_T_mid[idx_mid].reshape(240,960-2*half_window,N_loop,-1) # dim: 21*1670*N_loop*101
 
         dist_T_last = dist_T[:,-half_window:,:,-twice_window:] # dim: 21*50*N_loop*101
 
@@ -125,13 +158,13 @@ class AdaSM():
         
     def predict(self):
         rho_loop = self.rho[self.X_loop,:][:,self.T_loop]
-        rho_loop = np.repeat(rho_loop[np.newaxis,:,:], 1770, axis = 0)
-        rho_loop = np.repeat(rho_loop[np.newaxis,:,:,:], 21, axis = 0)
+        rho_loop = np.repeat(rho_loop[np.newaxis,:,:], 960 , axis = 0)
+        rho_loop = np.repeat(rho_loop[np.newaxis,:,:,:], 240, axis = 0)
         rho_loop = self._filter_by_t(rho_loop, self.idx_mid)
 
         u_loop = self.u[self.X_loop,:][:,self.T]
-        u_loop = np.repeat(u_loop[np.newaxis,:,:], 1770, axis = 0)
-        u_loop = np.repeat(u_loop[np.newaxis,:,:,:], 21, axis = 0)
+        u_loop = np.repeat(u_loop[np.newaxis,:,:], 960, axis = 0)
+        u_loop = np.repeat(u_loop[np.newaxis,:,:,:], 240, axis = 0)
         u_loop = self._filter_by_t(u_loop, self.idx_mid)
         
         V_free = self._aggregate(u_loop, self.phi_free)
@@ -146,7 +179,7 @@ class AdaSM():
     def _filter_by_t(self, arr, idx_mid):
         arr_first = arr[:,:half_window,:,:twice_window]
         arr_mid = arr[:,half_window:-half_window,:,:]
-        arr_mid = arr_mid[idx_mid].reshape(21,1770-2*half_window,N_loop,-1)
+        arr_mid = arr_mid[idx_mid].reshape(240,960-2*half_window,N_loop,-1)
         arr_last = arr[:,-half_window:,:,-twice_window:]
 
         arr = np.concatenate([arr_first, arr_mid, arr_last], axis = 1)
@@ -168,21 +201,11 @@ class AdaSM():
         return W*z_cong + (1-W)*z_free
     
     
-Error_rho = []
-Error_u = []
-loops_to_use = [2,4,6,8,10,12,14]
-for N_loop in [2,4,6,8,10,12,14]:
-    adam = AdaSM(rho, u, LOOPS[N_loop], T)
-    rho_star, u_star = adam.predict()
-    error_rho = np.linalg.norm(rho-rho_star,2)/np.linalg.norm(rho,2)
-    error_u = np.linalg.norm(u-u_star,2)/np.linalg.norm(u,2)
-    Error_rho.append(error_rho)
-    Error_u.append(error_u)
-    print("loop = ", N_loop, ",    error_rho = %.3e"%error_rho, ",    error_u = %.3e"%error_u)
-    
-    
-df = pd.DataFrame({"num_loop": loops_to_use,
-                  "Error_rho": Error_rho,
-                  "Error_u": Error_u
-                  })
-df.to_csv("AS_result.csv", index = None)
+N_loop = 4
+adam = AdaSM(rho, u, LOOPS[N_loop], T)
+rho_star, u_star = adam.predict()
+#error_rho = np.linalg.norm(rho-rho_star,2)/np.linalg.norm(rho,2)
+#error_u = np.linalg.norm(u-u_star,2)/np.linalg.norm(u,2)
+error_rho = np.sqrt( np.square((rho - rho_star)**2).mean() )
+error_u = np.sqrt( np.square((u - u_star)**2).mean() )
+print("loop = ", N_loop, ",    error_rho = %.3e"%error_rho, ",    error_u = %.3e"%error_u)

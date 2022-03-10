@@ -142,7 +142,21 @@ def save_checkpoint(state, is_best, checkpoint, save_each_epoch):
         shutil.copyfile(filepath, os.path.join(checkpoint, 'best.pth.tar'))
     if save_each_epoch == "True":
         shutil.copyfile(filepath, os.path.join(checkpoint, f'epoch={state["epoch"]:d}.pth.tar'))
-
+        
+def save_checkpoint_physics(state, is_best, checkpoint, save_each_epoch):
+    """Saves model and training parameters at checkpoint + 'last.21loop.tar'. If is_best==True, also saves
+    checkpoint + 'best.pth.tar'
+    Args:
+        state: (dict) contains model's state_dict, may contain other keys such as epoch, optimizer state_dict
+        is_best: (bool) True if it is the best model seen till now
+        checkpoint: (string) folder where parameters are to be saved
+    """
+    filepath = os.path.join(checkpoint, 'last.path.physics.tar')
+    torch.save(state, filepath)
+    if is_best:
+        shutil.copyfile(filepath, os.path.join(checkpoint, 'best.pth.physics.tar'))
+    if save_each_epoch == "True":
+        shutil.copyfile(filepath, os.path.join(checkpoint, f'epoch={state["epoch"]:d}.pth.physics.tar'))
 
 def load_checkpoint(checkpoint, model, optimizer=None, epoch=None,
                     device=None):

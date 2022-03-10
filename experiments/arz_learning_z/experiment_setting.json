@@ -3,17 +3,20 @@
         "train": "True",
         "z_dim": 2,
         "c_dim": 2,
-        "n_transformation": 4,
+
+        "n_transformation": 6,
         "s_net": {
             "n_hidden": 2,
-            "hidden_dim": 128,
+            "hidden_dim": 256,
             "activation_type": "leaky_relu",
             "last_activation_type": "tanh"
         },
         "t_net": {
-            "n_hidden": 2,
-            "hidden_dim": 128,
-            "activation_type": "leaky_relu",
+
+
+            "n_hidden": 6,
+            "hidden_dim": 40,
+            "activation_type": "tanh",
             "last_activation_type": "tanh"
         },
         "z_miu_net": {
@@ -36,7 +39,8 @@
         }
     },
     "physics": {
-        "type": "none",
+
+        "type": "arz_FD",
         "train": "False",
         "loss_fn": "raissi",
         "hypers": {
@@ -83,7 +87,9 @@
             "sigma_tau": 1
         }
     },
-    "batch_size": 500,
+
+
+    "batch_size": 5000,
     "epochs": 20000,
     "save_frequency": 1,
     "verbose_frequency": 1,
@@ -91,13 +97,18 @@
     "verbose_computation_time": 0,
     "data": {
         "type": "arz",
-        "loop_number": 6,
+
+
+        "loop_number": 16,
+
         "noise_scale": 0.02,
         "noise_number": 20
     },
     "metrics": [
+
         "rmse",
         "fake_kl"
+
     ],
     "learning_z": "True"
 }

@@ -7,8 +7,7 @@ import numpy as np
 import torch
 
 from src.utils import Params, save_checkpoint, load_checkpoint
-
-from src.models.flow import RealNVP, MO_RealNVP
+from src.models.flow import RealNVP
 from src.models.flow_learning_z import RealNVP_lz,MO_RealNVP_lz
 # from src.metrics import instantiate_losses, instantiate_metrics, functionalize_metrics
 from src.utils import set_logger, delete_file_or_folder
@@ -16,7 +15,6 @@ from src.training import training, test, test_multiple_rounds
 from src.joint_FD_training import joint_training #, joint_test, joint_test_multiple_rounds
 
 from src.dataset.arz_data import arz_data_loader
-from src.dataset.arz_data_pixel import arz_pixel_data_loader
 from src.dataset.lwr_data import lwr_data_loader
 from src.dataset.lwr_data_with_u import lwr_data_loader_with_u
 from src.dataset.lwr_data_with_u_joint import lwr_data_loader_with_u_joint
@@ -24,7 +22,7 @@ from src.dataset.burgers_data import burgers_data_loader
 from src.dataset.ngsim_data import ngsim_data_loader
 from src.layers.discriminator import Discriminator
 
-from src.layers.physics import GaussianLWR, GaussianLWR_soft
+from src.layers.physics import GaussianLWR
 from src.layers.physics import GaussianARZ, GaussianARZ_FD
 from src.layers.physics import GaussianBurgers
 from src.metrics import instantiate_losses, instantiate_metrics, functionalize_metrics
@@ -41,12 +39,10 @@ else:
     logging.info("cuda is not available")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--experiment_dir', default='experiments/ngsim_learning_z_MO', #lwr_with_u_learning_z
+parser.add_argument('--experiment_dir', default='experiments/ngsim_learning_z_MO_2', #lwr_with_u_learning_z
                     help="Directory containing experiment_setting.json")
-
 parser.add_argument('--MO', default=True,
                     help="Use RealNVP or MORealNVP")  # 100
-
 
 parser.add_argument('--restore_from', default= None, #"experiments/lwr_learning_z/weights/last.path.tar",
                     help="Optional, file location containing weights to reload")
@@ -151,16 +147,6 @@ if __name__ == "__main__":
         test_label_u = Exact_u.flatten()[:, None]
         test_label = np.concatenate([test_label_rho, test_label_u], 1)
 
-    elif params.data['type'] == 'arz_pixel':
-        data_loaded = arz_pixel_data_loader(params.data['loop_number'], params.data['noise_scale'],
-                                      params.data['noise_number'])
-        train_feature, train_label, train_feature_phy, x, t, idx = data_loaded.load_data()
-        test_feature, Exact_rho, Exact_u = data_loaded.load_test()
-        mean, std = data_loaded.load_bound()
-        test_label_rho = Exact_rho.flatten()[:, None]
-        test_label_u = Exact_u.flatten()[:, None]
-        test_label = np.concatenate([test_label_rho, test_label_u], 1)
-
     elif params.data['type'] == 'ngsim':
         data_loaded = ngsim_data_loader(params.data['loop_number'], params.data['noise_scale'],
                                       params.data['noise_number'])
@@ -257,15 +243,6 @@ if __name__ == "__main__":
                               params.physics["upper_bounds"],
                               params.physics["hypers"],
                               train=(params.physics["train"] == "True"))
-        physics.to(device)
-    elif params.physics["type"] == "lwr_soft":
-        physics = GaussianLWR_soft(params.physics["meta_params_value"],
-                              params.physics["meta_params_trainable"],
-                              params.physics["lower_bounds"],
-                              params.physics["upper_bounds"],
-                              params.physics["hypers"],
-                              train=(params.physics["train"] == "True"),
-                              device=device)
         physics.to(device)
     elif params.physics["type"] == "arz":
         physics = GaussianARZ(params.physics["meta_params_value"],
@@ -374,26 +351,16 @@ if __name__ == "__main__":
             model_2.to(device)
     else:
         if params.learning_z == "False":
-            if args.MO:
-                model = MO_RealNVP(params.affine_coupling_layers["z_dim"],
-                                      params.affine_coupling_layers["n_transformation"],
-                                      params.affine_coupling_layers["train"], mean, std,
-                                      device,
-                                      s_args,
-                                      t_args,
-                                      s_kwargs,
-                                      t_kwargs)
-            else:
-                model = RealNVP(params.affine_coupling_layers["z_dim"],
-                                params.affine_coupling_layers["n_transformation"],
-                                params.affine_coupling_layers["train"],
-                                mean,
-                                std,
-                                device,
-                                s_args,
-                                t_args,
-                                s_kwargs,
-                                t_kwargs)
+            model = RealNVP(params.affine_coupling_layers["z_dim"],
+                            params.affine_coupling_layers["n_transformation"],
+                            params.affine_coupling_layers["train"],
+                            mean,
+                            std,
+                            device,
+                            s_args,
+                            t_args,
+                            s_kwargs,
+                            t_kwargs)
             model.to(device)
         if params.learning_z == "True":
             input_dim_z = params.affine_coupling_layers["c_dim"]
@@ -441,7 +408,6 @@ if __name__ == "__main__":
     else:
         discriminator = Discriminator((96,25,2)).to(device)
     # create optimizer
-
     if params.data['type'] == 'lwr_with_u_joint':
         if params.affine_coupling_layers["optimizer"]["type"] == "Adam":
             optimizer = torch.optim.Adam([p for p in model_1.parameters() if p.requires_grad == True] +[p for p in model_2.parameters() if p.requires_grad == True]
@@ -565,7 +531,6 @@ if __name__ == "__main__":
             np.savetxt(save_path_idx, idx , delimiter=",", fmt="%d")
             print('train_and_test done')
 
-
         if args.mode == "test":
             restore_from = os.path.join(args.experiment_dir, "weights/last.path.tar")
             save_dir = os.path.join(args.experiment_dir, "test_result/")
@@ -657,7 +622,6 @@ if __name__ == "__main__":
                                             f"idx.csv")
             np.savetxt(save_path_idx, idx , delimiter=",", fmt="%d")
             print('train_and_test done')
-
 
         if args.mode == "test":
             restore_from = os.path.join(args.experiment_dir, "weights/last.path.tar")
@@ -757,7 +721,6 @@ if __name__ == "__main__":
             save_dir = os.path.join(args.experiment_dir, "test_result/")
             model_alias = args.experiment_dir.split('/')[-1]
         
-
             test_multiple_rounds(model, test_feature, test_label,
                                  test_rounds=args.test_rounds,
                                  save_dir=save_dir,

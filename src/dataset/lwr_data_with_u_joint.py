@@ -1,10 +1,13 @@
 import scipy.io
 import numpy as np
 
+def FD(rho,u_max,rho_max):
+    return u_max*(1-rho/rho_max)
 
-class lwr_data_loader():
 
-    def __init__(self, Loop_number, Noise_scale, Noise_number,noise_miu, noise_sigma):
+class lwr_data_loader_with_u_joint():
+
+    def __init__(self, Loop_number, Noise_scale, Noise_number,noise_miu, noise_sigma,FD_u_max=1.0,FD_rho_max=1.0):
 
         self.noise = Noise_scale
         self.N_noise = Noise_number 
@@ -12,18 +15,20 @@ class lwr_data_loader():
         self.N_loop = Loop_number
         self.miu = noise_miu
         self.sigma = noise_sigma # for generating gaussion noise
+        self.u_max=FD_u_max
+        self.rho_max=FD_rho_max
     def load_bound(self):
-        return self.mean, self.std
+        return self.mean.astype(np.float32), self.std.astype(np.float32),self.mean_2.astype(np.float32), self.std_2.astype(np.float32)
     def load_test(self):
-        return self.X_star, self.Exact_rho
+        return self.X_star, self.Exact_rho, self.Exact_u
     def load_data(self):
         data = scipy.io.loadmat('data/lwr/rho_bellshape_10grid_DS10_gn_eps005_solver2_ring.mat')
 
         t = data['t'].flatten()[:,None]# 960 by 1
         x = data['x'].flatten()[:,None]# 240 by 1; (zm on 01112022: 241 by 1 actually.)
-        Exact_rho = np.real(data['rho']).T # (zm on 01112022: 241 by 1 actually.)
-
-
+        Exact_rho = np.real(data['rho']).T # (zm on 01112022: 241 by 1 actually.)        
+        Exact_u=FD(Exact_rho,self.u_max,self.rho_max)
+       
         X, T = np.meshgrid(x,t) #
 
         X_repeat = X.flatten()[:,None].repeat(self.N_noise, axis=1)
@@ -52,7 +57,9 @@ class lwr_data_loader():
 
 
         rho_star = Exact_rho.flatten()[:,None] # 960*240 by 1
+        u_star = Exact_u.flatten()[:,None]
         self.Exact_rho = Exact_rho
+        self.Exact_u = Exact_u
 
 
         # Doman bounds
@@ -77,6 +84,7 @@ class lwr_data_loader():
         ##
         X_rho_repeat = np.repeat(X_rho_train,self.N_noise ,axis = 0)
         rho_train = rho_star[idx,:]
+        u_train = u_star[idx,:]
         # add shcok wave
         # rho_train_shockwave = rho_star[index_shock_wave,:]
         # rho_train = np.vstack((rho_train,rho_train_shockwave))
@@ -86,16 +94,27 @@ class lwr_data_loader():
         for i in range(self.N_noise -1):
             rho_train_repeat = np.hstack((rho_train_repeat, rho_train + self.noise *np.random.randn(rho_train.shape[0], rho_train.shape[1])))
         rho_train_repeat = rho_train_repeat.reshape(-1,1)
-        gaussion_noise = np.random.normal(self.miu,self.sigma,rho_train_repeat.shape[0]).reshape(-1,1)
-        rho_noisie_repeat  = np.concatenate((rho_train_repeat, gaussion_noise),axis=1)
+        u_train_repeat = u_train + self.noise*np.random.randn(u_train.shape[0], u_train.shape[1])
+        for i in range(self.N_noise-1):
+            u_train_repeat = np.hstack((u_train_repeat, u_train + self.noise*np.random.randn(u_train.shape[0], u_train.shape[1])))
+        u_train_repeat = u_train_repeat.reshape(-1,1)
 
+        gaussion_noise_1 = np.random.normal(self.miu,self.sigma,rho_train_repeat.shape[0]).reshape(-1,1)
+        rho_noisie_repeat  = np.concatenate((rho_train_repeat, gaussion_noise_1),axis=1)
 
-        X_rho_u  = np.concatenate((rho_noisie_repeat, X_rho_repeat),axis=1)
+        gaussion_noise_2 = np.random.normal(self.miu,self.sigma,rho_train_repeat.shape[0]).reshape(-1,1)
+        u_noisie_repeat  = np.concatenate((u_train_repeat, gaussion_noise_2),axis=1)
+        
+        rho_u_repeat = np.concatenate((rho_train_repeat,u_train_repeat),axis=1)
+        X_rho_u  = np.concatenate((rho_u_repeat, X_rho_repeat),axis=1) #(rho,u,x,t)
         self.mean = np.mean(X_rho_u, axis=0)
         self.std = np.std(X_rho_u, axis=0)
 
-        return X_rho_repeat.astype(np.float32), rho_noisie_repeat.astype(np.float32),X_star3.astype(np.float32), x,t,idx
+        X_rho  = np.concatenate((rho_train_repeat, X_rho_repeat),axis=1) #(rho,x,t)
+        self.mean_2 = np.mean(X_rho, axis=0)
+        self.std_2 = np.std(X_rho, axis=0)
 
+        return X_rho_repeat.astype(np.float32), rho_noisie_repeat.astype(np.float32),u_noisie_repeat.astype(np.float32), X_star3.astype(np.float32), x,t,idx
 
 
 

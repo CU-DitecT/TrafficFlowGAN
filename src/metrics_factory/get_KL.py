@@ -30,6 +30,7 @@ def get_fake_KL(real_data, sim_data):
         KL.append(kl)
     return KL
 
+
 def get_KL(real_data, sim_data):
     # real_data: N*M 2-d array. Every row is the distribution of rho for ONE (x,t)
     # sim_data: N*M 2-d array. Every row is the predicted distribution of rho

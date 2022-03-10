@@ -77,4 +77,4 @@ class burgers_data_loader():
         gaussion_noise = np.random.normal(self.miu,self.sigma,u_train_repeat.shape[0]).reshape(-1,1)
         rho_noisie_repeat  = np.concatenate((u_train_repeat, gaussion_noise),axis=1)
 
-        return X_u_repeat.astype(np.float32), rho_noisie_repeat.astype(np.float32), X_f_train.astype(np.float32), x,t,idx
+        return X_u_repeat.astype(np.float32), rho_noisie_repeat.astype(np.float32), X_f_train.astype(np.float32), X,T

@@ -5,7 +5,6 @@ import numpy as np
 from torch._C import device
 from src.layers.fully_connected import get_fully_connected_layer
 
-
 def get_mask(z_dim, n_transformation):
     mask = np.ones((n_transformation, z_dim), dtype=np.float32)
     for i in range(mask.shape[0]):

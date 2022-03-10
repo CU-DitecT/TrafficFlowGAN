@@ -30,6 +30,7 @@ class gan_helper():
         Exact_u = np.real(data['u']).T
         X, T = np.meshgrid(x, t)  # each is 960 by 241
 
+
         shift = 1
         rho_low_d = np.zeros((self.shape[0], self.shape[1] + shift))
         u_low_d = np.zeros((self.shape[0], self.shape[1] + shift))

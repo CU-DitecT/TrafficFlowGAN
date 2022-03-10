@@ -1,32 +1,32 @@
 {
     "affine_coupling_layers": {
-        "train": "False",
+        "train": "True",
         "z_dim": 2,
         "c_dim": 2,
         "n_transformation": 6,
         "s_net": {
-            "n_hidden": 5,
-            "hidden_dim": 128,
+            "n_hidden": 2,
+            "hidden_dim": 256,
             "activation_type": "leaky_relu",
             "last_activation_type": "tanh"
         },
         "t_net": {
-            "n_hidden": 5,
-            "hidden_dim": 128,
-            "activation_type": "leaky_relu",
+            "n_hidden": 6,
+            "hidden_dim": 40,
+            "activation_type": "tanh",
             "last_activation_type": "tanh"
         },
         "z_miu_net": {
             "n_hidden": 2,
             "hidden_dim": 64,
             "activation_type": "leaky_relu",
-            "last_activation_type": "none"
+            "last_activation_type": "tanh"
         },
         "z_sigma_net": {
             "n_hidden": 2,
             "hidden_dim": 64,
             "activation_type": "leaky_relu",
-            "last_activation_type": "none"
+            "last_activation_type": "sigmoid"
         },
         "optimizer": {
             "type": "Adam",
@@ -36,8 +36,8 @@
         }
     },
     "physics": {
-        "type": "none",
-        "train": "False",
+        "type": "arz_FD",
+        "train": "True",
         "loss_fn": "raissi",
         "hypers": {
             "alpha": 0.5,
@@ -50,18 +50,20 @@
                 "lr": 0.01
             }
         },
+       "FD_n_layer":2,
+       "FD_n_hidden":20,
         "meta_params_value": {
-            "mu_rhomax": 33.35,
-            "mu_umax": 13.511,
-            "mu_tau": 27.5,
+            "mu_rhomax": 1.5,
+            "mu_umax": 0.1969,
+            "mu_tau": 0.02,
             "sigma_rhomax": 0,
             "sigma_umax": 0,
             "sigma_tau": 0
         },
         "meta_params_trainable": {
-            "mu_rhomax": "True",
-            "mu_umax": "True",
-            "mu_tau": "True",
+            "mu_rhomax": "False",
+            "mu_umax": "False",
+            "mu_tau": "False",
             "sigma_rhomax": "False",
             "sigma_umax": "False",
             "sigma_tau": "False"
@@ -69,7 +71,7 @@
         "lower_bounds": {
             "mu_rhomax": 0.1,
             "mu_umax": 0.1,
-            "mu_tau": 0.1,
+            "mu_tau": 0.01,
             "sigma_rhomax": 0,
             "sigma_umax": 0,
             "sigma_tau": 0
@@ -83,21 +85,20 @@
             "sigma_tau": 1
         }
     },
-    "batch_size": 500,
+    "batch_size": 5000,
     "epochs": 20000,
     "save_frequency": 1,
     "verbose_frequency": 1,
     "save_each_epoch": "False",
     "verbose_computation_time": 0,
     "data": {
-        "type": "ngsim",
-        "loop_number": 18,
-        "noise_scale": 0.2,
+        "type": "arz_FD",
+        "loop_number": 16,
+        "noise_scale": 0.02,
         "noise_number": 20
     },
     "metrics": [
-        "rmse",
-        "fake_kl"
+        "rmse"
     ],
     "learning_z": "True"
 }
