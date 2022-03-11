@@ -4,7 +4,7 @@ import os
 import src.utils as utils
 
 import matplotlib.pyplot as plt
-import seaborn as sns
+#import seaborn as sns
 import logging
 import os
 from src.utils import save_dict_to_json, check_exist_and_create, check_and_make_dir
@@ -22,17 +22,20 @@ from tqdm import tqdm
 
 import sys
 
-def FD_plot(FD_learner,FD_result_path,epoch):
+def FD_plot(FD_learner,FD_result_path,epoch,writer):
     FD_learner.eval()
     rho_input=torch.arange(start=0.0,end=1.2,step=0.01).reshape((-1,1))
     FD_output=FD_learner(rho_input)
-    plt.plot(rho_input.cpu().detach().numpy(),FD_output.cpu().detach().numpy())
-    plt.xlabel('rho')
-    plt.title('FD learner after {} epochs'.format(epoch))
-    plt.savefig(FD_result_path+'FD_after_{}_epoch'.format(epoch),
+    fig, ax = plt.subplots()
+    ax.plot(rho_input.cpu().detach().numpy(),FD_output.cpu().detach().numpy())
+    ax.set_xlabel('rho')
+    ax.set_title('FD learner after {} epochs'.format(epoch))
+    writer.add_figure(FD_result_path+'FD_after_{}_epoch'.format(epoch), fig)
+    writer.close()
+    """plt.savefig(FD_result_path+'FD_after_{}_epoch'.format(epoch),
                 dpi=300,
                 bbox_inches="tight")
-    plt.close()
+    plt.close()"""
     FD_learner.train()
 
 def training(model, optimizer, discriminator, train_feature, train_target, train_feature_phy, device,
@@ -129,7 +132,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
             loss_data_time = time.time()-start_time
 
 
-            if (physics is not None) & (epoch//100%3 == 0):
+            if (physics.train) and  (physics is not None) & (epoch//100%3 == 0):
                 physics_optimizer.zero_grad()
 
             # get physics_loss
@@ -249,7 +252,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
                                   is_best=is_best,
                                   checkpoint=weights_path,
                                   save_each_epoch=save_each_epoch)
-            if (physics is not None) & (epoch//100%3 == 0):
+            if (physics.train) and (physics is not None) & (epoch//100%3 == 0):
                 utils.save_checkpoint_physics({'epoch': epoch + 1,
                                    'state_dict': physics.state_dict(),
                                    'optim_dict': physics_optimizer.state_dict()},
@@ -303,7 +306,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
                         writer.add_scalar(f"physics_grad/dLoss_d{k:s}", v.grad, epoch + 1)
         if FD_plot_freq is not None:
             if (epoch % FD_plot_freq == 0) | (epoch == begin_at_epoch + epochs - 1) | (epoch == 0):
-                FD_plot(physics.FD_learner,FD_result_path,epoch)
+                FD_plot(physics.FD_learner,FD_result_path,epoch,writer)
 
 
 

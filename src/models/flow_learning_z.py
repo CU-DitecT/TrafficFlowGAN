@@ -126,13 +126,14 @@ class RealNVP_lz(nn.Module):
         torch.manual_seed(1)
         z = self.prior.sample((c.shape[0], 1)).to(self.device)
         z = torch.squeeze(z)
+        z = miu + sigma*z
         if torch.is_tensor(c):
             c_ = c.to(self.device)
         else:
             c_ = torch.from_numpy(c).to(self.device)
         # log_p = self.prior.log_prob(z, c)
         x = self.g(z, c_)
-        x = x * torch.from_numpy(self.std[:2]).to(self.device) + torch.from_numpy(self.mean[:2]).to(self.device)
+        # x = x * torch.from_numpy(self.std[:2]).to(self.device) + torch.from_numpy(self.mean[:2]).to(self.device)
         activation = {"x1_eval": x[:, 0].cpu().detach().numpy(),
                       "x2_eval": x[:, 1].cpu().detach().numpy()}
         return activation
@@ -144,8 +145,9 @@ class RealNVP_lz(nn.Module):
         miu,sigma = self.NN_z(c)
         #miu,_ = self.NN_z(c)
         #sigma=0.0
+        sigma = torch.sigmoid(sigma)*0.5 + 0.05
 
-        z_cali = z*sigma + miu
+        z_cali = z*sigma+ miu
         # log_p = self.prior.log_prob(z, c)
         x = self.g(z_cali, c)
         ## hard code for Ngsim normalization
