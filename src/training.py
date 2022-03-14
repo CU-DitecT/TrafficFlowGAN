@@ -52,7 +52,8 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
              verbose_computation_time=0,
              save_each_epoch="False",
              training_gan = True,
-             training_gan_data = False
+             training_gan_data = False,
+             slice_at = None
              ):
     # Initialize tf.Saver instances to save weights during metrics_factory
     X_train = train_feature
@@ -91,14 +92,17 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
     Data_loss = []
     np.random.seed(1)
     n_critic=10
+    # shuffle the data
+    idx = np.random.choice(X_train.shape[0], X_train.shape[0], replace=False)
+    idx_phy = np.random.choice(X_train_phy.shape[0], X_train_phy.shape[0], replace=False)
+    X_train = X_train[idx, :]
+    y_train = y_train[idx, :]
+    X_train_phy = X_train_phy[idx_phy, :]
+
+    phys_loss_scale_np = 100
     for epoch in tqdm(range(begin_at_epoch, epochs)):
         
-        # shuffle the data
-        idx = np.random.choice(X_train.shape[0], X_train.shape[0], replace=False)
-        idx_phy = np.random.choice(X_train_phy.shape[0], X_train_phy.shape[0], replace=False)
-        X_train = X_train[idx, :]
-        y_train = y_train[idx, :]
-        X_train_phy = X_train_phy[idx_phy,:]
+
 
 
         #### hard code
@@ -119,6 +123,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
         # batch_size_phy = X_train_phy.shape[0] // num_steps
         batch_size_phy = batch_size
         for step in range(num_steps):
+            start_time = time.time()
             # x_batch = X_train[step * batch_size:(step + 1) * batch_size, :]
             # y_batch = y_train[step * batch_size:(step + 1) * batch_size, :]
             random_idx = np.random.choice(X_train.shape[0], batch_size, replace = False)
@@ -127,11 +132,10 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
             # random sample X_train_phy
             random_idx = np.random.choice(X_train_phy.shape[0], batch_size_phy, replace=False)
             x_batch_phy = X_train_phy[random_idx, :]
-            start_time = time.time()
             loss, activation = model.log_prob(y_batch, x_batch)
             loss = -loss.mean()
             data_loss = loss
-
+            # print("loading_batch_time:", time.time() - start_time); start_time = time.time()
             # data_loss = torch.tensor(0)  #for pure gan debug
             if training_gan_data:
                 fake_y = model.test(torch.from_numpy(x_batch).to(device))
@@ -157,18 +161,31 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
             loss_data_time = time.time()-start_time
 
 
-            if (physics is not None) & (epoch//100%3 == 0):
+            if (physics is not None) & (epoch//100%3 == 0) & (phys_loss_scale_np>5):
                 physics_optimizer.zero_grad()
 
             # get physics_loss
-            if (physics is not None) & (epoch//100%3 == 0):
+
+
+            if (physics is not None) & (epoch//100%3 == 0) & (phys_loss_scale_np>5):
                 start_time = time.time()
                 phy_loss, physics_params, grad_hist = physics.get_residuals(model, x_batch_phy)
                 phy_loss = phy_loss.mean()
                 loss_phy_time = time.time() - start_time
                 # print(physics_params["tau"])
-                loss = loss * physics.hypers["alpha"]
+
+                # try the normalizing loss
+                # loss = loss * physics.hypers["alpha"]
+                # loss += (1 - physics.hypers["alpha"]) * phy_loss
+                data_loss_scale = torch.abs(loss.detach()) + torch.tensor(1e-6, dtype=torch.float32)
+                phys_loss_scale = phy_loss.detach() + torch.tensor(1e-6, dtype=torch.float32)
+                loss = loss * physics.hypers["alpha"] * phys_loss_scale/data_loss_scale
                 loss += (1 - physics.hypers["alpha"]) * phy_loss
+
+                phys_loss_scale_np = phys_loss_scale.cpu().numpy()
+                # try the normalizing loss
+
+
                 phy_loss_np = phy_loss.cpu().detach().numpy()
 
             if training_gan is True:
@@ -177,7 +194,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
                 for _ in range(1):
                     if epoch%3 == 0:
                         discriminator.optimizer.zero_grad()
-                        Gan_helper = gan_helper(noise_scale, loops)
+                        Gan_helper = gan_helper(noise_scale, loops, slice_at)
                         Ground_truth_figure,Ground_truth_figure_origin = Gan_helper.load_ground_truth()
                         rho_u_test = model.test(torch.from_numpy(Gan_helper.X_T_low_d).to(device))
                         generator_figure,_ = Gan_helper.reshape_to_figure(rho_u_test.detach()[:,0],
@@ -207,7 +224,8 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
                                               generator_figure_origin).mean() # for visualization
                     T_real_np = T_real.cpu().detach().numpy()
                     loss_g_np = loss_g.cpu().detach().numpy()
-                    loss += loss_g_mse  + loss_g.squeeze().squeeze()
+                    # loss += loss_g_mse  + loss_g.squeeze().squeeze()
+                    loss += 10000*loss_g.squeeze().squeeze()
                     writer.add_scalar(f"physics_grad/loss_g_mse", loss_g_mse, epoch + 1)
                     writer.add_scalar(f"physics_grad/loss_g", loss_g_np, epoch + 1)
                     writer.add_scalar(f"physics_grad/loss_g_mse_viz", loss_g_mse_viz, epoch + 1)
@@ -218,15 +236,14 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
 
 
                     # loss.backward(retain_graph=True)
-                    loss.backward()
-                    optimizer.step()
+                    # loss.backward()
+                    # optimizer.step()
 
             start_time = time.time()
-
-
             #loss.backward(retain_graph=True)
             loss.backward(retain_graph=True)
             backward_all_time = time.time() - start_time
+            # print("backward_time:", time.time() - start_time)
 
             start_time = time.time()
             if model.train is True:
@@ -235,9 +252,11 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
                 pass
 
             step_data_time = time.time() - start_time
+            # print("step_time:", step_data_time)
+            start_time = time.time()
 
             start_time = time.time()
-            if (physics is not None) & (epoch//100%3 == 0):
+            if (physics is not None) & (epoch//100%3 == 0)&(phys_loss_scale_np>5):
                 if physics.train is True:
                     physics_optimizer.step()
                     #pass
@@ -251,14 +270,15 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
                 print(f"step_data_time: {step_data_time:.5f}")
                 print(f"step_phy_time: {step_phy_time:.5f}")
             # evaluation
-            activation_eval = model.eval(x_batch)
+            start_time = time.time()
 
             # save the data loss
             Data_loss.append(data_loss.cpu().detach().numpy())
+            # print("evaluation_time:", time.time() - start_time)
 
             # delete the output tensor
             del([data_loss, loss])
-            if (physics is not None) & (epoch//100%3 == 0):
+            if (physics is not None) & (epoch//100%3 == 0)&(phys_loss_scale_np>5):
                 del(phy_loss)
 
             # if training_gan_data:
@@ -285,7 +305,10 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
 
         # saving at every "save_frequency" or at the last epoch
         # Data_loss = [-10] #train gan data and commit out
+
         if (epoch % save_frequency == 0) | (epoch == begin_at_epoch + epochs - 1):
+            activation_eval = model.eval(x_batch)
+            start_time = time.time()
             is_best = Data_loss[-1] < best_loss
             utils.save_checkpoint({'epoch': epoch + 1,
                                    'state_dict': model.state_dict(),
@@ -349,6 +372,8 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
                 for k, v in physics.torch_meta_params.items():
                     if physics.meta_params_trainable[k] == "True":
                         writer.add_scalar(f"physics_grad/dLoss_d{k:s}", v.grad, epoch + 1)
+
+            # print("recording_time:", time.time()-start_time)
         if FD_plot_freq is not None:
             if (epoch % FD_plot_freq == 0) | (epoch == begin_at_epoch + epochs - 1) | (epoch == 0):
                 FD_plot(physics.FD_learner,FD_result_path,epoch)

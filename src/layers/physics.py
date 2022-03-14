@@ -141,7 +141,7 @@ class GaussianARZ(torch.nn.Module):
         self.device=device
 
     def caculate_residual(self, rho, u,  x, t, Umax, RHOmax, Tau, model):
-        Tau=Tau/50.0
+        # Tau=Tau/50.0
 
         drho_dt = torch.autograd.grad(rho, t, torch.ones([t.shape[0], 1], device=self.device).to(model.device),
                                       retain_graph=True, create_graph=True)[0]
@@ -184,7 +184,8 @@ class GaussianARZ(torch.nn.Module):
         batch_size = x_unlabel.shape[0]
         x = torch.tensor(x_unlabel[:, 0:1], requires_grad=True, device=self.device).float().to(model.device).repeat(self.hypers["n_repeat"],1)
         t = torch.tensor(x_unlabel[:, 1:2], requires_grad=True, device=self.device).float().to(model.device).repeat(self.hypers["n_repeat"],1)
-        rho, u = model.test(torch.cat((x, t), 1))
+        rho_u = model.test(torch.cat((x, t), 1))
+        rho, u = rho_u[:,0:1], rho_u[:,1:2]
         torch_params = self.sample_params(self.torch_meta_params, batch_size)
 
         f_rho_mean, f_u_mean, drho_dt = self.caculate_residual(rho, u, x, t, torch_params["umax"], torch_params["rhomax"], torch_params["tau"],model)

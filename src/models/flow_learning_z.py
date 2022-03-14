@@ -106,10 +106,6 @@ class RealNVP_lz(nn.Module):
                       "x2": x[:, 1],
                       "c_1": c[:,0],
                       "c_2": c[:,1]}
-        else:
-            activation = {"x1": x[:, 0],
-                      "x2": x[:, 1],
-                      "c_1": c[:,0]}
         #x = (x - self.mean[:2]) / self.std[:2]
         z = torch.from_numpy(x.astype(np.float32)).float().to(self.device) # z = x
         if torch.is_tensor(c):
@@ -388,5 +384,5 @@ class MO_RealNVP_lz(nn.Module):
         x = self.g(z_cali, c)
         ## hard code for Ngsim normalization
         #x = x*torch.from_numpy(self.std[:2]).to(self.device)+torch.from_numpy(self.mean[:2]).to(self.device)
-        return x[:, 0:1], x[:, 1:2]
-
+        # return x[:, 0:1], x[:, 1:2]
+        return x

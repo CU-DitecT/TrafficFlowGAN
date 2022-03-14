@@ -5,13 +5,13 @@ import pickle
 
 class ngsim_data_loader():
 
-    def __init__(self, Loop_number, Noise_scale, Noise_number):
+    def __init__(self, Loop_number, Noise_scale, Noise_number, slice_at):
 
         self.noise = Noise_scale
         self.N_noise = Noise_number 
         self.N_u = 20000
         self.N_loop = Loop_number
-
+        self.slice_at = slice_at # slice the data and only use the part [:slice_at,:]
     def load_test(self):
         return self.X_star, self.Exact_rho, self.Exact_u
     def load_bound(self):
@@ -20,7 +20,9 @@ class ngsim_data_loader():
         with open('data/Ngsim/US101_Lane1to5_t1.5s30.pickle', 'rb') as f:
             data_pickle = pickle.load(f)
 
-        Loop_dict = {3: [0, 7, 20],
+        Loop_dict = {
+                     2: [0, 20],
+                     3: [0, 7, 20],
                      4: [0, 5, 11, 20],
                      5: [0, 4, 8, 13, 20],
                      6: [0, 3, 7, 11, 14, 20],
@@ -38,12 +40,26 @@ class ngsim_data_loader():
 
         xx = np.array(data_pickle['s']).flatten()[:, None]
         tt = np.array(data_pickle['t']).flatten()[:, None]
-        rhoMat = np.array([np.array(ele) for ele in data_pickle['rhoMat']])*50
+        rhoMat = np.array([np.array(ele) for ele in data_pickle['rhoMat']])  *  50
         uMat = np.array([np.array(ele) for ele in data_pickle['vMat']])
-        # rhoMat_smooth = scipy.ndimage.uniform_filter(rhoMat, size=5, mode='nearest')
-        # uMat_smooth = scipy.ndimage.uniform_filter(uMat, size=5, mode='nearest')
 
-        rhoMat =rhoMat *50
+        # smooth the data
+        rhoMat= scipy.ndimage.uniform_filter(rhoMat, size=5, mode='nearest')
+        uMat = scipy.ndimage.uniform_filter(uMat, size=5, mode='nearest')
+
+        # update 0310 zm: cut the ngsim
+        if self.slice_at:
+            rhoMat = rhoMat[:,:self.slice_at]
+            uMat = uMat[:,:self.slice_at]
+            tt = tt[:self.slice_at]
+
+        # update 0311: subsample the data
+        rhoMat = rhoMat[:, ::10]
+        uMat = uMat[:,::10]
+        tt = tt[::10]
+
+
+        # rhoMat =rhoMat *50
         # update 0203 zm: cut the ngsim
         #rhoMat = rhoMat[:,:170]
         #uMat = uMat[:,:170]

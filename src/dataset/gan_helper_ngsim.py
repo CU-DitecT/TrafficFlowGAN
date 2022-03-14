@@ -5,8 +5,9 @@ import pickle
 
 class gan_helper():
 
-    def __init__(self, Noise_scale, N_loop):
+    def __init__(self, Noise_scale, N_loop, slice_at):
 
+        self.slice_at = slice_at
         self.N_loop = N_loop
         self.noise = Noise_scale
         self.load_ngsim()
@@ -34,14 +35,33 @@ class gan_helper():
 
         xx = np.array(data_pickle['s']).flatten()[:, None]
         tt = np.array(data_pickle['t']).flatten()[:, None]
-        X, T = np.meshgrid(xx, tt)
-        rhoMat = np.array([np.array(ele) for ele in data_pickle['rhoMat']])
+
+        rhoMat = np.array([np.array(ele) for ele in data_pickle['rhoMat']]) * 50
         uMat = np.array([np.array(ele) for ele in data_pickle['vMat']])
+
+        ### added on 0310
+        # smooth the data
+        rhoMat = scipy.ndimage.uniform_filter(rhoMat, size=5, mode='nearest')
+        uMat = scipy.ndimage.uniform_filter(uMat, size=5, mode='nearest')
+        if self.slice_at:
+            rhoMat = rhoMat[:, :self.slice_at]
+            uMat = uMat[:, :self.slice_at]
+            tt = tt[:self.slice_at]
+        ### added on 0310
+
+        # update 0311: subsample the data
+        rhoMat = rhoMat[:, ::10]
+        uMat = uMat[:, ::10]
+        tt = tt[::10]
+        # update 0311
+
         Exact_rho = rhoMat.T  # 1770 by 21
         Exact_u = uMat.T
-        self.X_T_low_d = np.hstack((X[::20,:].flatten()[:, None], T[::20,:].flatten()[:, None])).astype(np.float32)
 
-        self.rho_u_low_d = np.stack((Exact_rho[::20,:], Exact_u[::20,:]), axis=0)
+        X, T = np.meshgrid(xx, tt)
+        self.X_T_low_d = np.hstack((X.flatten()[:, None], T.flatten()[:, None])).astype(np.float32)
+
+        self.rho_u_low_d = np.stack((Exact_rho, Exact_u), axis=0)
 
     def load_ground_truth(self):
         real_figure = np.expand_dims((self.rho_u_low_d + self.noise * np.random.randn(self.rho_u_low_d.shape[0], self.rho_u_low_d.shape[1],self.rho_u_low_d.shape[2])),axis=0).astype(np.float32)

@@ -3,9 +3,9 @@ import logging
 import os
 import sys
 
-import numpy as np
-import torch
 
+import torch
+import numpy as np
 from src.utils import Params, save_checkpoint, load_checkpoint
 
 from src.models.flow import RealNVP, MO_RealNVP
@@ -71,6 +71,12 @@ if __name__ == "__main__":
     json_path = os.path.join(args.experiment_dir, 'experiment_setting.json')
     assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
     params = Params(json_path)
+
+    # check the non-exsistant argument
+    if "slice_at" not in params.data.keys():
+        params.data["slice_at"] = None
+    if "training_gan" not in params.__dict__.keys():
+        params.training_gan = "False"
 
     # if test, us
     if args.mode == "test":
@@ -162,8 +168,9 @@ if __name__ == "__main__":
         test_label = np.concatenate([test_label_rho, test_label_u], 1)
 
     elif params.data['type'] == 'ngsim':
+
         data_loaded = ngsim_data_loader(params.data['loop_number'], params.data['noise_scale'],
-                                      params.data['noise_number'])
+                                      params.data['noise_number'], params.data['slice_at'])
         train_feature, train_label, train_feature_phy, x, t,idx = data_loaded.load_data()
         test_feature, Exact_rho, Exact_u = data_loaded.load_test()
         test_label_rho = Exact_rho.flatten()[:, None]
@@ -248,7 +255,9 @@ if __name__ == "__main__":
                         "device":device}
            
     # get physics
-    if (params.physics["type"] == "none") | (params.physics["hypers"]["alpha"] == 1):
+                                            # )(_*)_)()_ hard code
+                                            # (88998df90ss
+    if (params.physics["type"] == "none"): #| (params.physics["hypers"]["alpha"] == 1):
         physics = None
     elif params.physics["type"] == "lwr":
         physics = GaussianLWR(params.physics["meta_params_value"],
@@ -604,26 +613,34 @@ if __name__ == "__main__":
             logging.info("Starting training for {} epoch(s)".format(params.epochs))
             training(model, optimizer,discriminator, train_feature, train_label, train_feature_phy,device,FD_plot_freq=args.FD_plot_freq,
                      restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
+                     loops=params.data['loop_number'],
+                     noise_scale=params.data['noise_scale'],
                      physics=physics,
                      physics_optimizer=optimizer_physics,
                      experiment_dir=args.experiment_dir,
                      save_frequency=params.save_frequency,
                      verbose_frequency=params.verbose_frequency,
                      save_each_epoch=params.save_each_epoch,
-                     verbose_computation_time = params.verbose_computation_time
+                     verbose_computation_time = params.verbose_computation_time,
+                     training_gan = params.training_gan=="True",
+                     slice_at=params.data["slice_at"]
                      )
 
         if args.mode == "train_and_test":
             logging.info("Starting training for {} epoch(s)".format(params.epochs))
             training(model, optimizer, discriminator, train_feature, train_label,device,FD_plot_freq=args.FD_plot_freq,
                      restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
+                     loops=params.data['loop_number'],
+                     noise_scale=params.data['noise_scale'],
                      physics=physics,
                      physics_optimizer=optimizer_physics,
                      experiment_dir=args.experiment_dir,
                      save_frequency=params.save_frequency,
                      verbose_frequency=params.verbose_frequency,
                      save_each_epoch=params.save_each_epoch,
-                     verbose_computation_time=params.verbose_computation_time
+                     verbose_computation_time=params.verbose_computation_time,
+                     training_gan = params.training_gan=="True",
+                     slice_at=params.data["slice_at"]
                      )
 
             # run test
@@ -698,26 +715,34 @@ if __name__ == "__main__":
             logging.info("Starting training for {} epoch(s)".format(params.epochs))
             training(model, optimizer,discriminator, train_feature, train_label, train_feature_phy,device,
                      restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
+                     loops=params.data['loop_number'],
+                     noise_scale=params.data['noise_scale'],
                      physics=physics,
                      physics_optimizer=optimizer_physics,
                      experiment_dir=args.experiment_dir,
                      save_frequency=params.save_frequency,
                      verbose_frequency=params.verbose_frequency,
                      save_each_epoch=params.save_each_epoch,
-                     verbose_computation_time = params.verbose_computation_time
+                     verbose_computation_time = params.verbose_computation_time,
+                     training_gan = params.training_gan=="True",
+                     slice_at=params.data["slice_at"]
                      )
 
         if args.mode == "train_and_test":
             logging.info("Starting training for {} epoch(s)".format(params.epochs))
             training(model, optimizer, discriminator, train_feature, train_label,device,
                      restore_from=args.restore_from, batch_size=params.batch_size, epochs=params.epochs,
+                     loops=params.data['loop_number'],
+                     noise_scale=params.data['noise_scale'],
                      physics=physics,
                      physics_optimizer=optimizer_physics,
                      experiment_dir=args.experiment_dir,
                      save_frequency=params.save_frequency,
                      verbose_frequency=params.verbose_frequency,
                      save_each_epoch=params.save_each_epoch,
-                     verbose_computation_time=params.verbose_computation_time
+                     verbose_computation_time=params.verbose_computation_time,
+                     training_gan = params.training_gan=="True",
+                     slice_at = params.data["slice_at"]
                      )
 
             # run test
