@@ -12,10 +12,6 @@ from torch.utils.tensorboard import SummaryWriter
 # from src.dataset.gan_helper import gan_helper
 from src.dataset.gan_helper_ngsim import gan_helper
 
-
-
-
-
 import time
 
 from tqdm import tqdm
@@ -47,7 +43,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
              epochs=1000,
              batch_size=None,
              experiment_dir=None,
-             save_frequency=1,
+             save_frequency=10,
              verbose_frequency=1,
              verbose_computation_time=0,
              save_each_epoch="False",

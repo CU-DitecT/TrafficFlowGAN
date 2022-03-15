@@ -2,7 +2,7 @@ import argparse
 import logging
 import os
 import sys
-
+import glob
 
 import torch
 import numpy as np
@@ -56,7 +56,7 @@ parser.add_argument('--n_hidden', default=3)
 parser.add_argument('--noise', default=0.2)
 
 parser.add_argument('--test_sample', default=100)  # 100
-
+parser.add_argument('--test_mode', default='last',help = 'last, best, each')
 parser.add_argument('--test_rounds', default=1)  # 3
 parser.add_argument('--nlpd_use_mean', default='True')
 parser.add_argument('--nlpd_n_bands', default=1000)
@@ -576,6 +576,7 @@ if __name__ == "__main__":
 
 
         if args.mode == "test":
+            # weight_files = glob.glob(args.experiment_dir + '/weights/*')
             restore_from = os.path.join(args.experiment_dir, "weights/last.path.tar")
             save_dir = os.path.join(args.experiment_dir, "test_result/")
             model_alias = args.experiment_dir.split('/')[-1]
@@ -778,36 +779,45 @@ if __name__ == "__main__":
             print('train_and_test done')
 
         if args.mode == "test":
-            restore_from = os.path.join(args.experiment_dir, "weights/last.path.tar")
-            save_dir = os.path.join(args.experiment_dir, "test_result/")
-            model_alias = args.experiment_dir.split('/')[-1]
-        
+            weight_files = glob.glob(args.experiment_dir + '/weights/*')
+            for file in weight_files:
+                if len(file.split('.'))==3:
+                    if args.test_mode=='last':
+                        if file.split('/')[-1].split('.')[0] != 'last':
+                            continue
+                    if args.test_mode=='best':
+                        if file.split('/')[-1].split('.')[0] != 'best':
+                            continue
+                    restore_from = file
+                    save_dir = os.path.join(args.experiment_dir, "test_result", args.experiment_dir.split('/')[-1]+'/')
+                    model_alias = file.split('/')[-1].split('.')[0]
 
-            test_multiple_rounds(model, test_feature, test_label,
-                                 test_rounds=args.test_rounds,
-                                 save_dir=save_dir,
-                                 model_alias=model_alias,
-                                 restore_from=restore_from,
-                                 metric_functions=metric_fns,
-                                 n_samples=int(args.test_sample),
-                                 noise= params.data['noise_scale'],
-                                 args=args)
-        
-            save_path_x = os.path.join(save_dir, model_alias,
-                                            f"x.csv")
-            save_path_t = os.path.join(save_dir, model_alias,
-                                            f"t.csv")
-            np.savetxt(save_path_x, x , delimiter=",")
-            np.savetxt(save_path_t, t , delimiter=",")
 
-            save_path_Exact_rho = os.path.join(save_dir, model_alias,
-                                            f"Exact_rho.csv")
-            save_path_Exact_u = os.path.join(save_dir, model_alias,
-                                            f"Exact_u.csv")
-            np.savetxt(save_path_Exact_rho, Exact_rho , delimiter=",")
-            np.savetxt(save_path_Exact_u, Exact_u , delimiter=",")
+                    test_multiple_rounds(model, test_feature, test_label,
+                                         test_rounds=args.test_rounds,
+                                         save_dir=save_dir,
+                                         model_alias=model_alias,
+                                         restore_from=restore_from,
+                                         metric_functions=metric_fns,
+                                         n_samples=int(args.test_sample),
+                                         noise= params.data['noise_scale'],
+                                         args=args)
 
-            save_path_idx = os.path.join(save_dir, model_alias,
-                                            f"idx.csv")
-            np.savetxt(save_path_idx, idx , delimiter=",", fmt="%d")
-            print('test done')
+                    save_path_x = os.path.join(save_dir, model_alias,
+                                                    f"x.csv")
+                    save_path_t = os.path.join(save_dir, model_alias,
+                                                    f"t.csv")
+                    np.savetxt(save_path_x, x , delimiter=",")
+                    np.savetxt(save_path_t, t , delimiter=",")
+
+                    save_path_Exact_rho = os.path.join(save_dir, model_alias,
+                                                    f"Exact_rho.csv")
+                    save_path_Exact_u = os.path.join(save_dir, model_alias,
+                                                    f"Exact_u.csv")
+                    np.savetxt(save_path_Exact_rho, Exact_rho , delimiter=",")
+                    np.savetxt(save_path_Exact_u, Exact_u , delimiter=",")
+
+                    save_path_idx = os.path.join(save_dir, model_alias,
+                                                    f"idx.csv")
+                    np.savetxt(save_path_idx, idx , delimiter=",", fmt="%d")
+                    print('test done')
