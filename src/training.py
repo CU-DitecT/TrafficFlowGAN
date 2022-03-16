@@ -119,6 +119,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
         # num_steps = X_train.shape[0] // batch_size
 
         num_steps = 100  #! HARDCODE HERE!#
+        thresh = 8.0
 
         # batch_size_phy = X_train_phy.shape[0] // num_steps
         batch_size_phy = batch_size
@@ -161,13 +162,13 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
             loss_data_time = time.time()-start_time
 
 
-            if (physics is not None) & (epoch//100%3 == 0) & (phys_loss_scale_np>5):
+            if (physics is not None) & (epoch//100%3 == 0) & (phys_loss_scale_np>thresh):
                 physics_optimizer.zero_grad()
 
             # get physics_loss
 
 
-            if (physics is not None) & (epoch//100%3 == 0) & (phys_loss_scale_np>5):
+            if (physics is not None) & (epoch//100%3 == 0) & (phys_loss_scale_np>thresh):
                 start_time = time.time()
                 phy_loss, physics_params, grad_hist = physics.get_residuals(model, x_batch_phy)
                 phy_loss = phy_loss.mean()
@@ -256,7 +257,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
             start_time = time.time()
 
             start_time = time.time()
-            if (physics is not None) & (epoch//100%3 == 0)&(phys_loss_scale_np>5):
+            if (physics is not None) & (epoch//100%3 == 0)&(phys_loss_scale_np>thresh):
                 if physics.train is True:
                     physics_optimizer.step()
                     #pass
@@ -278,7 +279,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
 
             # delete the output tensor
             del([data_loss, loss])
-            if (physics is not None) & (epoch//100%3 == 0)&(phys_loss_scale_np>5):
+            if (physics is not None) & (epoch//100%3 == 0)&(phys_loss_scale_np>thresh):
                 del(phy_loss)
 
             # if training_gan_data:
