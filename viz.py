@@ -11,9 +11,9 @@ from src.metrics_factory.get_KL import get_kde_curve
 from src.utils import check_exist_and_create, load_json, save_dict_to_json
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--experiment_dir', default='experiments/ngsim_learning_z',
+parser.add_argument('--experiment_dir', default='experiments/arz_learning_z_MO_GAN_phy_fix_3',
                     help="Directory containing 'test' ")
-parser.add_argument('--result_dir', default='experiments/ngsim_learning_z/test_result/ngsim_learning_z/', 
+parser.add_argument('--result_dir', default='experiments/arz_learning_z_MO_GAN_phy_fix_3/test_result/arz_learning_z_MO_GAN_phy_fix_3/last/',
                     help="folder to viz") 
 parser.add_argument('--mode', default='debug',
                     help="mode debug keeps more detail; mode paper is clean' ")

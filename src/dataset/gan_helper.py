@@ -4,7 +4,7 @@ import torch
 
 class gan_helper():
 
-    def __init__(self, Noise_scale, N_loop):
+    def __init__(self, Noise_scale, N_loop,slice_at=None):
 
         self.N_loop = N_loop
         self.noise = Noise_scale

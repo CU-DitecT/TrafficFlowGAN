@@ -9,8 +9,8 @@ import logging
 import os
 from src.utils import save_dict_to_json, check_exist_and_create, check_and_make_dir
 from torch.utils.tensorboard import SummaryWriter
-# from src.dataset.gan_helper import gan_helper
-from src.dataset.gan_helper_ngsim import gan_helper
+from src.dataset.gan_helper import gan_helper
+#from src.dataset.gan_helper_ngsim import gan_helper
 
 import time
 
@@ -158,7 +158,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
             loss_data_time = time.time()-start_time
 
 
-            if (physics is not None) & (epoch//100%3 == 0) & (phys_loss_scale_np>thresh):
+            if (physics.train) and (physics is not None) & (epoch//100%3 == 0) & (phys_loss_scale_np>thresh):
                 physics_optimizer.zero_grad()
 
             # get physics_loss
@@ -313,7 +313,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
                                   is_best=is_best,
                                   checkpoint=weights_path,
                                   save_each_epoch=save_each_epoch)
-            if (physics is not None) & (epoch//100%3 == 0):
+            if (physics.train) and (physics is not None) & (epoch//100%3 == 0):
                 utils.save_checkpoint_physics({'epoch': epoch + 1,
                                    'state_dict': physics.state_dict(),
                                    'optim_dict': physics_optimizer.state_dict()},

@@ -41,7 +41,7 @@ else:
     logging.info("cuda is not available")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--experiment_dir', default='experiments/ngsim_learning_z_MO', #lwr_with_u_learning_z
+parser.add_argument('--experiment_dir', default='experiments/arz_learning_z_MO_GAN_phy_fix_3', #lwr_with_u_learning_z
                     help="Directory containing experiment_setting.json")
 
 parser.add_argument('--MO', default=True,
@@ -465,7 +465,7 @@ if __name__ == "__main__":
             raise ValueError("optimizer not in searching domain.")
 
 
-    if physics is not None:
+    if physics is not None and params.physics["train"]=='True' :
         if params.physics["type"] == "arz_FD":
             if params.physics["optimizer"]["type"] == "Adam":
                 optimizer_physics = torch.optim.Adam(

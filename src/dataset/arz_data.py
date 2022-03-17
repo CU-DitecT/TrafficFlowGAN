@@ -108,4 +108,4 @@ class arz_data_loader():
         self.mean = np.mean(X_rho_u, axis=0)
         self.std = np.std(X_rho_u, axis=0)
 
-        return X_rho_repeat, rho_u_repeat, X_star3, X,T
+        return X_rho_repeat, rho_u_repeat, X_star3, x,t, idx #X,T
