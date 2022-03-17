@@ -86,7 +86,7 @@
         }
     },
     "batch_size": 128,
-    "epochs": 100000,
+    "epochs": 10000,
     "save_frequency": 100,
     "verbose_frequency": 1,
     "save_each_epoch": "False",
@@ -106,5 +106,5 @@
 
     ],
     "learning_z": "True",
-    "training_gan": "True"
+    "training_gan": "False"
 }
