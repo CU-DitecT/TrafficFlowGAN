@@ -33,6 +33,15 @@ class GaussianLWR(torch.nn.Module):
         self.train = train
         self.device = device
 
+    def caculate_residual_V2(self, rho, u, x, t, Umax, RHOmax, Tau, model):
+        r = u - Umax*(1 - rho/RHOmax)
+        r = r.reshape(self.hypers["n_repeat"], -1).T
+        r_mean = torch.square(torch.mean(r, dim=1))
+
+        return r_mean, 0, 0, 0, r
+
+
+
     def caculate_residual(self, rho, x, t, Umax, RHOmax, Tau, model):
         drho_dt = torch.autograd.grad(rho, t, torch.ones([t.shape[0], 1]).to(model.device),
                                       retain_graph=True, create_graph=True)[0]
@@ -65,10 +74,12 @@ class GaussianLWR(torch.nn.Module):
         batch_size = x_unlabel.shape[0]
         x = torch.tensor(x_unlabel[:, 0:1], requires_grad=True).float().to(model.device).repeat(self.hypers["n_repeat"],1)
         t = torch.tensor(x_unlabel[:, 1:2], requires_grad=True).float().to(model.device).repeat(self.hypers["n_repeat"],1)
-        rho, u = model.test(torch.cat((x, t), 1))
+        rho_u = model.test(torch.cat((x, t), 1))
+        rho, u = rho_u[:, 0:1], rho_u[:, 1:2]
         torch_params = self.sample_params(self.torch_meta_params, batch_size)
 
-        r_mean, drho_dx, drho_dt, eq_2,r = self.caculate_residual(rho, x, t, torch_params["umax"], torch_params["rhomax"], torch_params["tau"],model)
+        # r_mean, drho_dx, drho_dt, eq_2,r = self.caculate_residual(rho, x, t, torch_params["umax"], torch_params["rhomax"], torch_params["tau"],model)
+        r_mean, drho_dx, drho_dt, eq_2,r = self.caculate_residual_V2(rho, u, x, t, torch_params["umax"], torch_params["rhomax"], torch_params["tau"],model)
 
         # Umax_line = np.linspace(0.1,2,50)
         # rhomax_line = np.linspace(0.1,2,50)
@@ -85,10 +96,10 @@ class GaussianLWR(torch.nn.Module):
 
 
         gradient_hist = {"rho": rho.cpu().detach().numpy(),
-                         "rho_dot_drhodx": (rho * drho_dx).cpu().detach().numpy(),
-                         "drho_dt": drho_dt.cpu().detach().numpy(),
-                         "drho_dx": drho_dx.cpu().detach().numpy(),
-                         "dq_dx": eq_2.cpu().detach().numpy(),
+                         # "rho_dot_drhodx": (rho * drho_dx).cpu().detach().numpy(),
+                         # "drho_dt": drho_dt.cpu().detach().numpy(),
+                         # "drho_dx": drho_dx.cpu().detach().numpy(),
+                         # "dq_dx": eq_2.cpu().detach().numpy(),
                          "f1": r.cpu().detach().numpy()}
 
         for k in torch_params.keys():
@@ -142,6 +153,7 @@ class GaussianARZ(torch.nn.Module):
 
     def caculate_residual(self, rho, u,  x, t, Umax, RHOmax, Tau, model):
         # Tau=Tau/50.0
+        SCALE = 1e2
 
         drho_dt = torch.autograd.grad(rho, t, torch.ones([t.shape[0], 1], device=self.device).to(model.device),
                                       retain_graph=True, create_graph=True)[0]
@@ -150,34 +162,35 @@ class GaussianARZ(torch.nn.Module):
                                       retain_graph=True, create_graph=True)[0]
         du_dx = torch.autograd.grad(u, x, torch.ones([x.shape[0], 1]).to(model.device),
                                       retain_graph=True, create_graph=True)[0]
-        # drho_dxx = torch.autograd.grad(drho_dx, x, torch.ones([x.shape[0], 1]).to(model.device),
-        #                                retain_graph=True, create_graph=True)[0]
+        drho_dxx = torch.autograd.grad(drho_dx, x, torch.ones([x.shape[0], 1]).to(model.device),
+                                       retain_graph=True, create_graph=True)[0]
 
         U_eq = Umax*(1 - rho/RHOmax)
         h = Umax*rho/RHOmax
 
         ## f_rho
         drho_time_u_dx =drho_dx *u + du_dx*rho
-        f_rho = drho_dt + drho_time_u_dx # - 0.005*drho_dxx
+        f_rho = drho_dt + drho_time_u_dx  - 0.05*drho_dxx
 
-        ## f_u
-        u_h = u+h
-        du_h_dt = torch.autograd.grad(u_h, t, torch.ones([x.shape[0], 1]).to(model.device),
-                                      retain_graph=True, create_graph=True)[0]
-        du_h_dx = torch.autograd.grad(u_h, x, torch.ones([x.shape[0], 1]).to(model.device),
-                                      retain_graph=True, create_graph=True)[0]
-        f_u = Tau*(du_h_dt+ u*du_h_dx) -(U_eq-u)
+        # ## f_u
+        # u_h = u+h
+        # du_h_dt = torch.autograd.grad(u_h, t, torch.ones([x.shape[0], 1]).to(model.device),
+        #                               retain_graph=True, create_graph=True)[0]
+        # du_h_dx = torch.autograd.grad(u_h, x, torch.ones([x.shape[0], 1]).to(model.device),
+        #                               retain_graph=True, create_graph=True)[0]
+        # f_u = Tau*(du_h_dt+ u*du_h_dx) -(U_eq-u)
+        #
+        # f_rho = f_rho.reshape(self.hypers["n_repeat"], -1).T
+        #
+        f_rho_mean = torch.square(torch.mean(f_rho*SCALE, dim=1))
+        #
+        # f_u = f_u.reshape(self.hypers["n_repeat"], -1).T
+        #
+        # f_u_mean = torch.square(torch.mean(f_u, dim=1))
 
-        f_rho = f_rho.reshape(self.hypers["n_repeat"], -1).T
 
-        f_rho_mean = torch.square(torch.mean(f_rho, dim=1))
-
-        f_u = f_u.reshape(self.hypers["n_repeat"], -1).T
-
-        f_u_mean = torch.square(torch.mean(f_u, dim=1))
-
-
-        return f_rho_mean, f_u_mean, drho_dt
+        # return f_rho_mean, f_u_mean, drho_dt
+        return f_rho_mean, 0, drho_dt*SCALE, drho_time_u_dx*SCALE, drho_dxx*SCALE
 
     def get_residuals(self, model, x_unlabel):
         # get gradient
@@ -185,11 +198,11 @@ class GaussianARZ(torch.nn.Module):
         x = torch.tensor(x_unlabel[:, 0:1], requires_grad=True, device=self.device).float().to(model.device).repeat(self.hypers["n_repeat"],1)
         t = torch.tensor(x_unlabel[:, 1:2], requires_grad=True, device=self.device).float().to(model.device).repeat(self.hypers["n_repeat"],1)
         rho_u = model.test(torch.cat((x, t), 1))
-        rho, u = rho_u[:,0:1], rho_u[:,1:2]
+        rho, u = rho_u[:, 0:1], rho_u[:, 1:2]
         torch_params = self.sample_params(self.torch_meta_params, batch_size)
 
-        f_rho_mean, f_u_mean, drho_dt = self.caculate_residual(rho, u, x, t, torch_params["umax"], torch_params["rhomax"], torch_params["tau"],model)
-
+        # f_rho_mean, f_u_mean, drho_dt = self.caculate_residual(rho, u, x, t, torch_params["umax"], torch_params["rhomax"], torch_params["tau"],model)
+        f_rho_mean, f_u_mean, drho_dt, drho_time_u_dx, drho_dxx = self.caculate_residual(rho, u, x, t, torch_params["umax"], torch_params["rhomax"], torch_params["tau"],model)
         # Umax_line = np.linspace(0.1,2,50)
         # rhomax_line = np.linspace(0.1,2,50)
         # r_out = np.zeros((Umax_line.shape[0],rhomax_line.shape[0]))
@@ -202,12 +215,14 @@ class GaussianARZ(torch.nn.Module):
         #         r_out[i][j] = r_mean.mean().cpu().detach().numpy()
         # with open('/home/ubuntu/PhysFlow/test_21loop_100000.npy','wb') as f:
         #     np.save(f,r_out)
-        loss_mean = self.hypers["alpha_u_rho"]*f_rho_mean +(1-self.hypers["alpha_u_rho"])*f_u_mean
-        # loss_mean = f_rho_mean
+        # loss_mean = self.hypers["alpha_u_rho"]*f_rho_mean +(1-self.hypers["alpha_u_rho"])*f_u_mean
+        loss_mean = f_rho_mean
         gradient_hist = {"rho": rho,
                          "drho_dt": drho_dt,
                          "f_rho_mean": f_rho_mean,
-                         "f_u_mean": f_u_mean}
+                         "f_u_mean": f_u_mean,
+                         "drho_time_u_dx": drho_time_u_dx,
+                         "drho_dxx": drho_dxx}
 
         return loss_mean, torch_params, gradient_hist
 
