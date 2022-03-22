@@ -26,12 +26,22 @@ class RMSELoss(torch.nn.Module):
     def forward(self,yhat,y):
         return torch.sqrt(self.mse(yhat,y))
 
+
+class REloss(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.mse = torch.nn.MSELoss()
+
+    def forward(self, y, yhat):
+        return torch.sqrt(self.mse(yhat, y))/torch.sqrt(self.mse(torch.zeros_like(y), y))
+
 def instantiate_metrics(metric_name):
     metric_dict = {
         #"mse": tf.keras.metrics.MeanSquaredError(), # should change to torch loss
         "mse":torch.nn.MSELoss(),
         #"rmse": tf.keras.metrics.RootMeanSquaredError(), # should change to torch loss
         "rmse":RMSELoss(),
+        're':REloss(),
         #"mae": tf.keras.metrics.MeanAbsoluteError(), # should change to torch loss
         "mae":torch.nn.L1Loss(),
         #"kl": torch.nn.BCEWithLogitsLoss(),
