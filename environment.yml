@@ -1,4 +1,4 @@
-name: PhysicsFlow
+name: PhysicsFlow_good
 dependencies:
   - python=3.7
   - pip
