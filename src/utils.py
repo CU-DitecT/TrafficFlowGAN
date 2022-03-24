@@ -174,7 +174,8 @@ def load_checkpoint(checkpoint, model, optimizer=None, epoch=None,
     model.load_state_dict(checkpoint['state_dict'])
 
     if optimizer is not None:
-        optimizer.load_state_dict(checkpoint['optim_dict'])
+        pass
+        #optimizer.load_state_dict(checkpoint['optim_dict'])
     if epoch is not None:
         epoch = checkpoint['epoch']
         return epoch

@@ -54,7 +54,7 @@ class Discriminator(torch.nn.Module):
         #     torch.nn.Tanh(),
         #     torch.nn.Linear(32, 1),
         # )
-        self.optimizer = torch.optim.Adam(self.parameters(), lr=0.001)
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=0.00001)
 
     def forward(self, image):
         p = self.model_cnn(image)

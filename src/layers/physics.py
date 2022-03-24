@@ -341,7 +341,12 @@ class GaussianARZ_FD(torch.nn.Module):
             self.hypers["n_repeat"], 1)
         t = torch.tensor(x_unlabel[:, 1:2], requires_grad=True, device=self.device).float().to(model.device).repeat(
             self.hypers["n_repeat"], 1)
-        rho, u = model.test(torch.cat((x, t), 1))
+
+        #rho, u = model.test(torch.cat((x, t), 1))
+        rho = model.test(torch.cat((x, t), 1))[:,[0]]
+        u = model.test(torch.cat((x, t), 1))[:,[1]]
+
+
         torch_params = self.sample_params(self.torch_meta_params, batch_size)
 
         # f_rho_mean, f_u_mean, drho_dt = self.caculate_residual(rho, u, x, t, torch_params["umax"], torch_params["rhomax"], torch_params["tau"],model)

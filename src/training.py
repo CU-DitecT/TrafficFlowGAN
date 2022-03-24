@@ -22,7 +22,7 @@ import sys
 
 def FD_plot(FD_learner,FD_result_path,epoch):
     FD_learner.eval()
-    rho_input=torch.arange(start=0.0,end=1.2,step=0.01).reshape((-1,1))
+    rho_input=torch.arange(start=0.0,end=20.0,step=0.01).reshape((-1,1))
     FD_output=FD_learner(rho_input)
     plt.plot(rho_input.cpu().detach().numpy(),FD_output.cpu().detach().numpy())
     plt.xlabel('rho')
@@ -158,8 +158,9 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
             loss_data_time = time.time()-start_time
 
 
-            if (physics.train) and (physics is not None) & (epoch//100%3 == 0) & (phys_loss_scale_np>thresh):
-                physics_optimizer.zero_grad()
+            if (physics is not None) & (epoch//100%3 == 0) & (phys_loss_scale_np>thresh):
+                if (physics.train):
+                    physics_optimizer.zero_grad()
 
             # get physics_loss
 
@@ -313,8 +314,9 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
                                   is_best=is_best,
                                   checkpoint=weights_path,
                                   save_each_epoch=save_each_epoch)
-            if (physics.train) and (physics is not None) & (epoch//100%3 == 0):
-                utils.save_checkpoint_physics({'epoch': epoch + 1,
+            if (physics is not None) & (epoch//100%3 == 0):
+                if (physics.train):
+                    utils.save_checkpoint_physics({'epoch': epoch + 1,
                                    'state_dict': physics.state_dict(),
                                    'optim_dict': physics_optimizer.state_dict()},
                                   is_best=is_best,
@@ -418,6 +420,7 @@ def test(model, test_feature, test_target,
       result = model.test(torch.from_numpy(test_feature))
       rho_tensor = result[:,:1]
       u_tensor = result[:,1:]
+      del result
       samples_mean_rho[:,i:i+1],samples_mean_u[:,i:i+1] = rho_tensor.detach().numpy(), u_tensor.detach().numpy()
     
     rho_star=test_target[:,0][:,None]
@@ -485,7 +488,10 @@ def test(model, test_feature, test_target,
             nll = -log_prob.mean()
             metrics_dict[k] = [nll]
         else:
-           metrics_dict[k] = [func(torch.from_numpy(test_target), torch.from_numpy(test_prediction)).item()]
+            metrics_dict[k + '_rho'] = [
+                func(torch.from_numpy(test_target[:, 0]), torch.from_numpy(test_prediction[:, 0])).item()]
+            metrics_dict[k + '_u'] = [
+                func(torch.from_numpy(test_target[:, 1]), torch.from_numpy(test_prediction[:, 1])).item()]
         print('{}: done'.format(k))
 
     return metrics_dict, test_prediction, exact_sample_u,exact_sample_rho, samples_mean_u,samples_mean_rho,kl_u,kl_rho
@@ -497,12 +503,62 @@ def test(model, test_feature, test_target,
 
 def test_multiple_rounds(model, test_feature,test_label, test_rounds=1,
                          save_dir = None,
-                         model_alias = None,                        
+                         model_alias = None,
+                         slice_piece=1,
                 **kwargs):
 
-    metrics_dict, test_prediction, exact_sample_u,exact_sample_rho, samples_mean_u,samples_mean_rho, kl_u,kl_rho = test(model, test_feature,test_label,
-
+    #slice the test_feature into slice_piece to avoid memory corruption
+    test_slice=int(test_feature.shape[0]/slice_piece)
+    metrics_dict, test_prediction, exact_sample_u, exact_sample_rho, samples_mean_u, samples_mean_rho, kl_u, kl_rho = test(
+        model, test_feature[:test_slice, :], test_label[:test_slice, :],
+        **kwargs)
+    for slice_n in range(slice_piece-1):
+        metrics_dict_next, test_prediction_next, exact_sample_u_next,exact_sample_rho_next, samples_mean_u_next,samples_mean_rho_next, kl_u_next,kl_rho_next = test(model, test_feature[(test_slice*(slice_n+1)):(test_slice*(slice_n+2)),:],test_label[(test_slice*(slice_n+1)):(test_slice*(slice_n+2)),:],
                                          **kwargs)
+        for k in metrics_dict.keys():
+            metrics_dict[k] += metrics_dict_next[k]
+        del metrics_dict_next
+        test_prediction=np.concatenate([test_prediction,test_prediction_next],0)
+        del test_prediction_next
+        exact_sample_u=np.concatenate([exact_sample_u,exact_sample_u_next],0)
+        del exact_sample_u_next
+        exact_sample_rho=np.concatenate([exact_sample_rho,exact_sample_rho_next],0)
+        del exact_sample_rho_next
+        samples_mean_u=np.concatenate([samples_mean_u,samples_mean_u_next],0)
+        del samples_mean_u_next
+        samples_mean_rho=np.concatenate([samples_mean_rho,samples_mean_rho_next],0)
+        del samples_mean_rho_next
+        kl_u=kl_u+kl_u_next
+        del  kl_u_next
+        kl_rho=kl_rho+kl_rho_next
+        del kl_rho_next
+    slice_n = slice_piece-1
+    if ((test_slice*(slice_n+2)) != test_feature.shape[0]) & (slice_piece>1):
+        metrics_dict_next, test_prediction_next, exact_sample_u_next, exact_sample_rho_next, samples_mean_u_next, samples_mean_rho_next, kl_u_next, kl_rho_next = test(
+            model, test_feature[(test_slice * (slice_n + 2)):, :],
+            test_label[(test_slice * (slice_n + 2)):, :],
+            **kwargs)
+        for k in metrics_dict.keys():
+            metrics_dict[k] += metrics_dict_next[k]
+        del metrics_dict_next
+        test_prediction = np.concatenate([test_prediction, test_prediction_next], 0)
+        del test_prediction_next
+        exact_sample_u = np.concatenate([exact_sample_u, exact_sample_u_next], 0)
+        del exact_sample_u_next
+        exact_sample_rho = np.concatenate([exact_sample_rho, exact_sample_rho_next], 0)
+        del exact_sample_rho_next
+        samples_mean_u = np.concatenate([samples_mean_u, samples_mean_u_next], 0)
+        del samples_mean_u_next
+        samples_mean_rho = np.concatenate([samples_mean_rho, samples_mean_rho_next], 0)
+        del samples_mean_rho_next
+        kl_u = kl_u + kl_u_next
+        del kl_u_next
+        kl_rho = kl_rho + kl_rho_next
+        del kl_rho_next
+
+
+    #sys.exit()
+
     logging.info("Restoring parameters from {}".format(kwargs["restore_from"]))
     if test_rounds > 1:
         for i in range(test_rounds-1):
