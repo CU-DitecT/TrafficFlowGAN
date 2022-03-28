@@ -153,7 +153,7 @@ class GaussianARZ(torch.nn.Module):
 
     def caculate_residual(self, rho, u,  x, t, Umax, RHOmax, Tau, model):
         # Tau=Tau/50.0
-        SCALE = 1e2
+        SCALE = 1
 
         drho_dt = torch.autograd.grad(rho, t, torch.ones([t.shape[0], 1], device=self.device).to(model.device),
                                       retain_graph=True, create_graph=True)[0]
@@ -173,24 +173,24 @@ class GaussianARZ(torch.nn.Module):
         f_rho = drho_dt + drho_time_u_dx  - 0.05*drho_dxx
 
         # ## f_u
-        # u_h = u+h
-        # du_h_dt = torch.autograd.grad(u_h, t, torch.ones([x.shape[0], 1]).to(model.device),
-        #                               retain_graph=True, create_graph=True)[0]
-        # du_h_dx = torch.autograd.grad(u_h, x, torch.ones([x.shape[0], 1]).to(model.device),
-        #                               retain_graph=True, create_graph=True)[0]
-        # f_u = Tau*(du_h_dt+ u*du_h_dx) -(U_eq-u)
-        #
-        # f_rho = f_rho.reshape(self.hypers["n_repeat"], -1).T
-        #
+        u_h = u+h
+        du_h_dt = torch.autograd.grad(u_h, t, torch.ones([x.shape[0], 1]).to(model.device),
+                                      retain_graph=True, create_graph=True)[0]
+        du_h_dx = torch.autograd.grad(u_h, x, torch.ones([x.shape[0], 1]).to(model.device),
+                                      retain_graph=True, create_graph=True)[0]
+        f_u = Tau*(du_h_dt+ u*du_h_dx) -(U_eq-u)
+
+        f_rho = f_rho.reshape(self.hypers["n_repeat"], -1).T
+
         f_rho_mean = torch.square(torch.mean(f_rho*SCALE, dim=1))
-        #
-        # f_u = f_u.reshape(self.hypers["n_repeat"], -1).T
-        #
-        # f_u_mean = torch.square(torch.mean(f_u, dim=1))
+
+        f_u = f_u.reshape(self.hypers["n_repeat"], -1).T
+
+        f_u_mean = torch.square(torch.mean(f_u, dim=1))
 
 
-        # return f_rho_mean, f_u_mean, drho_dt
-        return f_rho_mean, 0, drho_dt*SCALE, drho_time_u_dx*SCALE, drho_dxx*SCALE
+        return f_rho_mean, f_u_mean, drho_dt
+        # return f_rho_mean, 0, drho_dt*SCALE, drho_time_u_dx*SCALE, drho_dxx*SCALE
 
     def get_residuals(self, model, x_unlabel):
         # get gradient
@@ -201,8 +201,8 @@ class GaussianARZ(torch.nn.Module):
         rho, u = rho_u[:, 0:1], rho_u[:, 1:2]
         torch_params = self.sample_params(self.torch_meta_params, batch_size)
 
-        # f_rho_mean, f_u_mean, drho_dt = self.caculate_residual(rho, u, x, t, torch_params["umax"], torch_params["rhomax"], torch_params["tau"],model)
-        f_rho_mean, f_u_mean, drho_dt, drho_time_u_dx, drho_dxx = self.caculate_residual(rho, u, x, t, torch_params["umax"], torch_params["rhomax"], torch_params["tau"],model)
+        f_rho_mean, f_u_mean, drho_dt = self.caculate_residual(rho, u, x, t, torch_params["umax"], torch_params["rhomax"], torch_params["tau"],model)
+        # f_rho_mean, f_u_mean, drho_dt, drho_time_u_dx, drho_dxx = self.caculate_residual(rho, u, x, t, torch_params["umax"], torch_params["rhomax"], torch_params["tau"],model)
         # Umax_line = np.linspace(0.1,2,50)
         # rhomax_line = np.linspace(0.1,2,50)
         # r_out = np.zeros((Umax_line.shape[0],rhomax_line.shape[0]))
@@ -215,14 +215,15 @@ class GaussianARZ(torch.nn.Module):
         #         r_out[i][j] = r_mean.mean().cpu().detach().numpy()
         # with open('/home/ubuntu/PhysFlow/test_21loop_100000.npy','wb') as f:
         #     np.save(f,r_out)
-        # loss_mean = self.hypers["alpha_u_rho"]*f_rho_mean +(1-self.hypers["alpha_u_rho"])*f_u_mean
-        loss_mean = f_rho_mean
+        loss_mean = self.hypers["alpha_u_rho"]*f_rho_mean +(1-self.hypers["alpha_u_rho"])*f_u_mean
+        # loss_mean = f_rho_mean
         gradient_hist = {"rho": rho,
                          "drho_dt": drho_dt,
                          "f_rho_mean": f_rho_mean,
                          "f_u_mean": f_u_mean,
-                         "drho_time_u_dx": drho_time_u_dx,
-                         "drho_dxx": drho_dxx}
+                         # "drho_time_u_dx": drho_time_u_dx,
+                         # "drho_dxx": drho_dxx
+                         }
 
         return loss_mean, torch_params, gradient_hist
 

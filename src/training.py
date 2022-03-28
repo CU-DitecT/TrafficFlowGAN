@@ -302,7 +302,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
 
         # saving at every "save_frequency" or at the last epoch
         # Data_loss = [-10] #train gan data and commit out
-
+        save_frequency = 20
         if (epoch % save_frequency == 0) | (epoch == begin_at_epoch + epochs - 1):
             activation_eval = model.eval(x_batch)
             start_time = time.time()
