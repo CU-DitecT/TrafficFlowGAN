@@ -115,7 +115,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
         # num_steps = X_train.shape[0] // batch_size
 
         num_steps = 100  #! HARDCODE HERE!#
-        thresh = 8.0
+        thresh = 0.0
 
         # batch_size_phy = X_train_phy.shape[0] // num_steps
         batch_size_phy = batch_size
@@ -158,13 +158,13 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
             loss_data_time = time.time()-start_time
 
 
-            if (physics is not None) & (epoch//100%3 == 0) & (phys_loss_scale_np>thresh):
+            if (physics is not None) & (epoch//100%1 == 0) & (phys_loss_scale_np>thresh):
                 physics_optimizer.zero_grad()
 
             # get physics_loss
 
 
-            if (physics is not None) & (epoch//100%3 == 0) & (phys_loss_scale_np>thresh):
+            if (physics is not None) & (epoch//100%1 == 0) & (phys_loss_scale_np>thresh):
                 start_time = time.time()
                 phy_loss, physics_params, grad_hist = physics.get_residuals(model, x_batch_phy)
                 phy_loss = phy_loss.mean()
@@ -189,7 +189,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
                 # train the discriminator
 
                 for _ in range(1):
-                    if epoch%3 == 0:
+                    if epoch%1 == 0:
                         discriminator.optimizer.zero_grad()
                         Gan_helper = gan_helper(noise_scale, loops, slice_at)
                         Ground_truth_figure,Ground_truth_figure_origin = Gan_helper.load_ground_truth()
@@ -205,7 +205,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
                         del([loss_d, T_real, T_fake, rho_u_test, generator_figure])
 
                 # Loss of the generator
-                for _ in range(1):
+                for _ in range(3):
                     optimizer.zero_grad()
                     rho_u_test = model.test(torch.from_numpy(Gan_helper.X_T_low_d).to(device))
                     generator_figure, generator_figure_origin = Gan_helper.reshape_to_figure(rho_u_test.detach()[:, 0],
@@ -222,7 +222,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
                     T_real_np = T_real.cpu().detach().numpy()
                     loss_g_np = loss_g.cpu().detach().numpy()
                     # loss += loss_g_mse  + loss_g.squeeze().squeeze()
-                    loss += 10000*loss_g.squeeze().squeeze()
+                    loss += loss_g.squeeze().squeeze()
                     writer.add_scalar(f"physics_grad/loss_g_mse", loss_g_mse, epoch + 1)
                     writer.add_scalar(f"physics_grad/loss_g", loss_g_np, epoch + 1)
                     writer.add_scalar(f"physics_grad/loss_g_mse_viz", loss_g_mse_viz, epoch + 1)
@@ -253,7 +253,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
             start_time = time.time()
 
             start_time = time.time()
-            if (physics is not None) & (epoch//100%3 == 0)&(phys_loss_scale_np>thresh):
+            if (physics is not None) & (epoch//100%1 == 0)&(phys_loss_scale_np>thresh):
                 if physics.train is True:
                     physics_optimizer.step()
                     #pass
@@ -275,7 +275,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
 
             # delete the output tensor
             del([data_loss, loss])
-            if (physics is not None) & (epoch//100%3 == 0)&(phys_loss_scale_np>thresh):
+            if (physics is not None) & (epoch//100%1 == 0)&(phys_loss_scale_np>thresh):
                 del(phy_loss)
 
             # if training_gan_data:
@@ -313,7 +313,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
                                   is_best=is_best,
                                   checkpoint=weights_path,
                                   save_each_epoch=save_each_epoch)
-            if (physics is not None) & (epoch//100%3 == 0):
+            if (physics is not None) & (epoch//100%1 == 0):
                 utils.save_checkpoint_physics({'epoch': epoch + 1,
                                    'state_dict': physics.state_dict(),
                                    'optim_dict': physics_optimizer.state_dict()},
@@ -352,7 +352,7 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
                 writer.add_histogram(f"activation_train/{k:s}", v, epoch+1)
             for k, v in activation_eval.items():
                 writer.add_histogram(f"activation_eval/{k:s}", v, epoch+1)
-            if (physics is not None) & (epoch//100%3 == 0):
+            if (physics is not None) & (epoch//100%1 == 0):
                 # write the physics_params
                 for k, v in physics_params.items():
                     if k=='tau':
@@ -366,9 +366,9 @@ def training(model, optimizer, discriminator, train_feature, train_target, train
                 for k, v in grad_hist.items():
                     writer.add_histogram(f"grad/{k:s}", v, epoch+1)
 
-                for k, v in physics.torch_meta_params.items():
-                    if physics.meta_params_trainable[k] == "True":
-                        writer.add_scalar(f"physics_grad/dLoss_d{k:s}", v.grad, epoch + 1)
+                # for k, v in physics.torch_meta_params.items():
+                #     if physics.meta_params_trainable[k] == "True":
+                #         writer.add_scalar(f"physics_grad/dLoss_d{k:s}", v.grad, epoch + 1)
 
             # print("recording_time:", time.time()-start_time)
         if FD_plot_freq is not None:
@@ -485,7 +485,8 @@ def test(model, test_feature, test_target,
             nll = -log_prob.mean()
             metrics_dict[k] = [nll]
         else:
-           metrics_dict[k] = [func(torch.from_numpy(test_target), torch.from_numpy(test_prediction)).item()]
+           metrics_dict[k+'_rho'] = [func(torch.from_numpy(test_target[:,0]), torch.from_numpy(test_prediction[:,0])).item()]
+           metrics_dict[k+'_u'] = [func(torch.from_numpy(test_target[:,1]), torch.from_numpy(test_prediction[:,1])).item()]
         print('{}: done'.format(k))
 
     return metrics_dict, test_prediction, exact_sample_u,exact_sample_rho, samples_mean_u,samples_mean_rho,kl_u,kl_rho
